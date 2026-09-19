@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/sidebar";
 import { startLogin } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
-import { LayoutDashboard, LogOut, PanelLeft, Users } from "lucide-react";
+import { FilePlus2, LayoutDashboard, LogOut, PanelLeft, Users } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
@@ -104,6 +104,7 @@ function DashboardLayoutContent({
   const { state, toggleSidebar } = useSidebar();
   const menuItems = [
     { icon: LayoutDashboard, label: "နေ့စဉ်စာရင်း", path: "/" },
+    { icon: FilePlus2, label: "စာရင်းအသစ် ထည့်ရန်", path: "/new" },
     ...(user?.role === "admin" ? [{ icon: Users, label: "Admin Dashboard", path: "/admin" }] : []),
   ];
   const isCollapsed = state === "collapsed";
