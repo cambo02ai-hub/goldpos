@@ -28,7 +28,7 @@ import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
 import { Button } from "./ui/button";
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";
-const DEFAULT_WIDTH = 280;
+const DEFAULT_WIDTH = 240;
 const MIN_WIDTH = 200;
 const MAX_WIDTH = 480;
 
@@ -254,7 +254,7 @@ function DashboardLayoutContent({
             </div>
           </div>
         )}
-        <main className="flex-1 p-4">{children}</main>
+        <main className="flex-1 p-2 sm:p-3 md:p-4">{children}</main>
       </SidebarInset>
     </>
   );
