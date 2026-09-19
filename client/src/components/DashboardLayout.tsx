@@ -27,11 +27,6 @@ import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
 import { Button } from "./ui/button";
 
-const menuItems = [
-  { icon: LayoutDashboard, label: "Page 1", path: "/" },
-  { icon: Users, label: "Page 2", path: "/some-path" },
-];
-
 const SIDEBAR_WIDTH_KEY = "sidebar-width";
 const DEFAULT_WIDTH = 280;
 const MIN_WIDTH = 200;
@@ -107,6 +102,10 @@ function DashboardLayoutContent({
   const { user, logout } = useAuth();
   const [location, setLocation] = useLocation();
   const { state, toggleSidebar } = useSidebar();
+  const menuItems = [
+    { icon: LayoutDashboard, label: "နေ့စဉ်စာရင်း", path: "/" },
+    ...(user?.role === "admin" ? [{ icon: Users, label: "Admin Dashboard", path: "/admin" }] : []),
+  ];
   const isCollapsed = state === "collapsed";
   const [isResizing, setIsResizing] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
@@ -168,8 +167,8 @@ function DashboardLayoutContent({
               </button>
               {!isCollapsed ? (
                 <div className="flex items-center gap-2 min-w-0">
-                  <span className="font-semibold tracking-tight truncate">
-                    Navigation
+                    <span className="font-semibold tracking-tight truncate">
+                      ရွှေစာရင်း
                   </span>
                 </div>
               ) : null}
