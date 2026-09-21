@@ -1,5 +1,5 @@
 import "dotenv/config";
-import express from "express";
+import express, { type Express } from "express";
 import { createServer } from "http";
 import net from "net";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
@@ -28,8 +28,12 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
   throw new Error(`No available port found starting from ${startPort}`);
 }
 
-export async function createApp(options: { includeStatic?: boolean } = {}) {
-  const app = express();
+export async function createApp(
+  options: { includeStatic?: boolean } = {},
+  existingApp?: Express,
+  existingServer?: ReturnType<typeof createServer>,
+) {
+  const app = existingApp ?? express();
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
@@ -47,7 +51,7 @@ export async function createApp(options: { includeStatic?: boolean } = {}) {
   const includeStatic = options.includeStatic ?? true;
   if (includeStatic) {
     if (process.env.NODE_ENV === "development") {
-      await setupVite(app, createServer(app));
+      await setupVite(app, existingServer ?? createServer(app));
     } else {
       serveStatic(app);
     }
@@ -57,8 +61,9 @@ export async function createApp(options: { includeStatic?: boolean } = {}) {
 }
 
 async function startServer() {
-  const app = await createApp();
+  const app = express();
   const server = createServer(app);
+  await createApp({}, app, server);
   const preferredPort = parseInt(process.env.PORT || "3000");
   const port = await findAvailablePort(preferredPort);
 
