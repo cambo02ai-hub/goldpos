@@ -1,7 +1,8 @@
 FROM node:22-alpine AS build
 WORKDIR /app
 RUN corepack enable && corepack prepare pnpm@10.4.1 --activate
-COPY package.json pnpm-lock.yaml patches/ ./
+COPY package.json pnpm-lock.yaml ./
+COPY patches ./patches
 RUN pnpm install --frozen-lockfile
 COPY . .
 RUN pnpm build
@@ -9,7 +10,8 @@ RUN pnpm build
 FROM node:22-alpine AS runtime
 WORKDIR /app
 RUN corepack enable && corepack prepare pnpm@10.4.1 --activate
-COPY package.json pnpm-lock.yaml patches/ ./
+COPY package.json pnpm-lock.yaml ./
+COPY patches ./patches
 RUN pnpm install --frozen-lockfile
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/drizzle ./drizzle
@@ -25,7 +27,8 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 CMD wget 
 FROM node:22-alpine AS migrate
 WORKDIR /app
 RUN corepack enable && corepack prepare pnpm@10.4.1 --activate
-COPY package.json pnpm-lock.yaml patches/ ./
+COPY package.json pnpm-lock.yaml ./
+COPY patches ./patches
 RUN pnpm install --frozen-lockfile
 COPY drizzle ./drizzle
 COPY drizzle.config.ts ./drizzle.config.ts
