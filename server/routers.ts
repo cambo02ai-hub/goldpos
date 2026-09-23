@@ -12,6 +12,8 @@ import {
   listUsers,
   updateUserRole,
 } from "./db";
+import { authenticateLocalUser } from "./localAuth";
+import { sdk } from "./_core/sdk";
 
 const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const transactionSchema = z.object({
@@ -37,6 +39,15 @@ export const appRouter = router({
   system: systemRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
+    login: publicProcedure
+      .input(z.object({ username: z.string().min(1).max(64), password: z.string().min(1).max(200) }))
+      .mutation(async ({ input, ctx }) => {
+        const user = await authenticateLocalUser(input.username, input.password);
+        if (!user) throw new TRPCError({ code: "UNAUTHORIZED", message: "Invalid username or password" });
+        const token = await sdk.createSessionToken(user.openId, { name: user.name ?? user.openId });
+        ctx.res.cookie(COOKIE_NAME, token, getSessionCookieOptions(ctx.req));
+        return { success: true } as const;
+      }),
     logout: publicProcedure.mutation(({ ctx }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });

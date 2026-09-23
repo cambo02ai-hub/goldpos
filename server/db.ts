@@ -59,6 +59,21 @@ export async function getUserByOpenId(openId: string) {
   return result[0];
 }
 
+export async function upsertLocalAdmin(username: string, passwordHash: string): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database is not available");
+  await db.insert(users).values({
+    openId: username,
+    name: username,
+    loginMethod: "local",
+    passwordHash,
+    role: "admin",
+    lastSignedIn: new Date(),
+  }).onDuplicateKeyUpdate({
+    set: { name: username, loginMethod: "local", passwordHash, role: "admin" },
+  });
+}
+
 export async function listGoldTransactions(filters?: { from?: string; to?: string; type?: "sell" | "buy" }) {
   const db = await getDb();
   if (!db) return [];
