@@ -1,0 +1,60 @@
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: goldpos-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: goldpos
+      MYSQL_USER: goldpos
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    volumes:
+      - goldpos_mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    networks: [goldpos]
+
+  migrate:
+    build:
+      context: .
+      target: migrate
+    container_name: goldpos-migrate
+    restart: "no"
+    environment:
+      DATABASE_URL: mysql://goldpos:${MYSQL_PASSWORD}@mysql:3306/goldpos
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks: [goldpos]
+
+  app:
+    build:
+      context: .
+      target: runtime
+    container_name: goldpos-app
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: mysql://goldpos:${MYSQL_PASSWORD}@mysql:3306/goldpos
+      JWT_SECRET: ${JWT_SECRET}
+      VITE_APP_ID: ${VITE_APP_ID:-}
+      OAUTH_SERVER_URL: ${OAUTH_SERVER_URL:-}
+      OWNER_OPEN_ID: ${OWNER_OPEN_ID:-}
+      BUILT_IN_FORGE_API_URL: ${BUILT_IN_FORGE_API_URL:-}
+      BUILT_IN_FORGE_API_KEY: ${BUILT_IN_FORGE_API_KEY:-}
+    ports:
+      - "127.0.0.1:3003:3000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    networks: [goldpos]
+
+volumes:
+  goldpos_mysql_data:
+
+networks:
+  goldpos:
