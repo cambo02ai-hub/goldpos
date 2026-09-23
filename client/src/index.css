@@ -12,26 +12,54 @@
 :root { --slip-width: 58mm; }
 
 @media print {
-  @page { size: var(--slip-width) auto; margin: 0; }
+  @page { size: 58mm 140mm; margin: 0; }
   aside, header, form, button, [data-sidebar], .no-print { display: none !important; }
   html, body { width: var(--slip-width) !important; min-width: var(--slip-width) !important; margin: 0 !important; padding: 0 !important; background: #fff !important; }
   body:has(.invoice-print-area) * { visibility: hidden !important; }
   body:has(.invoice-print-area) .invoice-print-area,
   body:has(.invoice-print-area) .invoice-print-area * { visibility: visible !important; }
   body:has(.invoice-print-area) .invoice-print-area {
-    position: absolute !important;
-    inset: 0 auto auto 0 !important;
+    position: static !important;
     width: var(--slip-width) !important;
     max-width: var(--slip-width) !important;
     min-width: var(--slip-width) !important;
     margin: 0 !important;
     padding: 0 !important;
-    overflow: hidden !important;
+    overflow: visible !important;
     border: 0 !important;
     box-shadow: none !important;
     background: #fff !important;
     color: #111 !important;
     font-size: 10pt !important;
+  }
+  body:has(.invoice-print-area) .invoice-preview-paper,
+  body:has(.invoice-print-area) .invoice-print-area {
+    height: auto !important;
+    max-height: none !important;
+  }
+  body:has(.invoice-print-area) .invoice-preview-paper {
+    width: var(--slip-width) !important;
+    max-width: none !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+  }
+  body:has(.invoice-print-area) .invoice-preview-paper > div {
+    overflow: visible !important;
+    max-height: none !important;
+  }
+  body:has(.invoice-print-area) div:has(> .invoice-preview-paper) {
+    max-height: none !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    background: #fff !important;
+  }
+  body:has(.invoice-print-area) [data-radix-dialog-content] {
+    position: static !important;
+    transform: none !important;
+    width: var(--slip-width) !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
   body:has(.invoice-print-area) .invoice-print-area > div { padding-left: 4mm !important; padding-right: 4mm !important; }
   body:has(.invoice-print-area) .invoice-print-area .no-print { display: none !important; }
