@@ -38,7 +38,11 @@ const adminOnlyProcedure = protectedProcedure.use(({ ctx, next }) => {
 export const appRouter = router({
   system: systemRouter,
   auth: router({
-    me: publicProcedure.query(opts => opts.ctx.user),
+    me: publicProcedure.query(opts => {
+      if (!opts.ctx.user) return null;
+      const { passwordHash: _passwordHash, ...safeUser } = opts.ctx.user;
+      return safeUser;
+    }),
     login: publicProcedure
       .input(z.object({ username: z.string().min(1).max(64), password: z.string().min(1).max(200) }))
       .mutation(async ({ input, ctx }) => {
