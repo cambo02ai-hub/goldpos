@@ -6,15 +6,50 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import DashboardLayout from "./components/DashboardLayout";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import AdminDashboard from "./pages/AdminDashboard";
+import Finance from "./pages/Finance";
 import Home from "./pages/Home";
 import NewEntry from "./pages/NewEntry";
 
 function Router() {
-  return <Switch><Route path="/"><DashboardLayout><Home /></DashboardLayout></Route><Route path="/new"><DashboardLayout><NewEntry /></DashboardLayout></Route><Route path="/admin"><DashboardLayout><AdminDashboard /></DashboardLayout></Route><Route path="/404" component={NotFound} /><Route component={NotFound} /></Switch>;
+  return (
+    <Switch>
+      <Route path="/">
+        <DashboardLayout>
+          <Home />
+        </DashboardLayout>
+      </Route>
+      <Route path="/new">
+        <DashboardLayout>
+          <NewEntry />
+        </DashboardLayout>
+      </Route>
+      <Route path="/finance">
+        <DashboardLayout>
+          <Finance />
+        </DashboardLayout>
+      </Route>
+      <Route path="/admin">
+        <DashboardLayout>
+          <AdminDashboard />
+        </DashboardLayout>
+      </Route>
+      <Route path="/404" component={NotFound} />
+      <Route component={NotFound} />
+    </Switch>
+  );
 }
 
 function App() {
-  return <ErrorBoundary><ThemeProvider defaultTheme="light"><TooltipProvider><Toaster /><Router /></TooltipProvider></ThemeProvider></ErrorBoundary>;
+  return (
+    <ErrorBoundary>
+      <ThemeProvider defaultTheme="light">
+        <TooltipProvider>
+          <Toaster />
+          <Router />
+        </TooltipProvider>
+      </ThemeProvider>
+    </ErrorBoundary>
+  );
 }
 
 export default App;

@@ -15,6 +15,13 @@
       "when": 1789799557618,
       "tag": "0001_common_bloodscream",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1790618563210,
+      "tag": "0002_financial_accounting",
+      "breakpoints": true
     }
   ]
 }

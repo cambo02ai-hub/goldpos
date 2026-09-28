@@ -21,10 +21,17 @@ import {
 } from "@/components/ui/sidebar";
 import { startLogin } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
-import { FilePlus2, LayoutDashboard, LogOut, PanelLeft, Users } from "lucide-react";
+import {
+  BookOpenCheck,
+  FilePlus2,
+  LayoutDashboard,
+  LogOut,
+  PanelLeft,
+  Users,
+} from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
-import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
+import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
 import { Button } from "./ui/button";
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";
@@ -48,7 +55,7 @@ export default function DashboardLayout({
   }, [sidebarWidth]);
 
   if (loading) {
-    return <DashboardLayoutSkeleton />
+    return <DashboardLayoutSkeleton />;
   }
 
   if (!user) {
@@ -60,7 +67,8 @@ export default function DashboardLayout({
               Sign in to continue
             </h1>
             <p className="text-sm text-muted-foreground text-center max-w-sm">
-              Access to this dashboard requires authentication. Continue to launch the login flow.
+              Access to this dashboard requires authentication. Continue to
+              launch the login flow.
             </p>
           </div>
           <Button
@@ -105,7 +113,10 @@ function DashboardLayoutContent({
   const menuItems = [
     { icon: LayoutDashboard, label: "နေ့စဉ်စာရင်း", path: "/" },
     { icon: FilePlus2, label: "စာရင်းအသစ် ထည့်ရန်", path: "/new" },
-    ...(user?.role === "admin" ? [{ icon: Users, label: "Admin Dashboard", path: "/admin" }] : []),
+    { icon: BookOpenCheck, label: "ငွေစာရင်း / အစီရင်ခံစာ", path: "/finance" },
+    ...(user?.role === "admin"
+      ? [{ icon: Users, label: "Admin Dashboard", path: "/admin" }]
+      : []),
   ];
   const isCollapsed = state === "collapsed";
   const [isResizing, setIsResizing] = useState(false);
@@ -168,8 +179,8 @@ function DashboardLayoutContent({
               </button>
               {!isCollapsed ? (
                 <div className="flex items-center gap-2 min-w-0">
-                    <span className="font-semibold tracking-tight truncate">
-                      ရွှေစာရင်း
+                  <span className="font-semibold tracking-tight truncate">
+                    ရွှေစာရင်း
                   </span>
                 </div>
               ) : null}
