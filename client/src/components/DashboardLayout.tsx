@@ -23,6 +23,7 @@ import { startLogin } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
 import {
   BookOpenCheck,
+  CalendarCheck2,
   FilePlus2,
   LayoutDashboard,
   LogOut,
@@ -114,6 +115,7 @@ function DashboardLayoutContent({
     { icon: LayoutDashboard, label: "နေ့စဉ်စာရင်း", path: "/" },
     { icon: FilePlus2, label: "စာရင်းအသစ် ထည့်ရန်", path: "/new" },
     { icon: BookOpenCheck, label: "ငွေစာရင်း / အစီရင်ခံစာ", path: "/finance" },
+    { icon: CalendarCheck2, label: "ဆိုင်စာရင်းအုပ်", path: "/shop-book" },
     ...(user?.role === "admin"
       ? [{ icon: Users, label: "Admin Dashboard", path: "/admin" }]
       : []),

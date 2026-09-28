@@ -22,6 +22,13 @@
       "when": 1790618563210,
       "tag": "0002_financial_accounting",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1790638953628,
+      "tag": "0003_shop_workflow",
+      "breakpoints": true
     }
   ]
 }

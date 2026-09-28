@@ -18,6 +18,18 @@ import {
   listOutstandingTransactions,
   listUsers,
   updateUserRole,
+  SHOP_ACCOUNTS,
+  createShopJournalEntry,
+  saveShopDailyClosing,
+  createHlawOoEntry,
+  createStaffLeaveEntry,
+  deleteShopJournalEntry,
+  deleteHlawOoEntry,
+  deleteStaffLeaveEntry,
+  getShopDailyOverview,
+  listShopJournalEntries,
+  listHlawOoEntries,
+  listStaffLeaveEntries,
 } from "./db";
 
 const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
@@ -59,6 +71,52 @@ const settlementSchema = z.object({
   paymentMethod: z
     .enum(["cash", "bank", "kbzpay", "wavepay", "other"])
     .default("cash"),
+  note: z.string().trim().max(500).optional(),
+});
+
+const shopJournalSchema = z.object({
+  entryDate: dateSchema,
+  side: z.enum(["debit", "credit"]),
+  accountCode: z.string().regex(/^\d{4}$/),
+  details: z.string().trim().min(1).max(255),
+  kyat: z.number().int().min(0).default(0),
+  pae: z.number().int().min(0).max(15).default(0),
+  yway: z.number().min(0).max(127).default(0),
+  rate: z.number().int().min(0).default(0),
+  price: z.number().int().min(0).default(0),
+  amount: z.number().int().positive(),
+});
+const dailyClosingSchema = z.object({
+  closingDate: dateSchema,
+  openingCash: z.number().int().min(0),
+  openingGoldKyat: z.number().int().min(0),
+  openingGoldPae: z.number().int().min(0).max(15),
+  openingGoldYway: z.number().min(0).max(127),
+  openingGoldValue: z.number().int().min(0),
+  closingGoldKyat: z.number().int().min(0),
+  closingGoldPae: z.number().int().min(0).max(15),
+  closingGoldYway: z.number().min(0).max(127),
+  closingGoldRate: z.number().int().min(0),
+  countedCash: z.number().int().min(0).nullable().optional(),
+  note: z.string().trim().max(500).nullable().optional(),
+});
+const hlawOoSchema = z.object({
+  serviceDate: dateSchema,
+  customerName: z.string().trim().min(1).max(255),
+  hlawKyat: z.number().int().min(0).default(0),
+  hlawPae: z.number().int().min(0).max(15).default(0),
+  hlawYway: z.number().min(0).max(7.5).default(0),
+  tinKyat: z.number().int().min(0).default(0),
+  tinPae: z.number().int().min(0).max(15).default(0),
+  tinHtwe: z.number().min(0).max(7.5).default(0),
+  serviceFee: z.number().int().min(0).default(0),
+  note: z.string().trim().max(500).optional(),
+});
+const staffLeaveSchema = z.object({
+  leaveDate: dateSchema,
+  employeeName: z.string().trim().min(1).max(255),
+  leaveType: z.enum(["leave", "absent", "late", "other"]).default("leave"),
+  dayUnits: z.number().positive().max(1).default(1),
   note: z.string().trim().max(500).optional(),
 });
 
@@ -161,6 +219,68 @@ export const appRouter = router({
           });
         }
       }),
+  }),
+  shopBook: router({
+    accounts: protectedProcedure.query(() => SHOP_ACCOUNTS),
+    daily: protectedProcedure
+      .input(z.object({ date: dateSchema }))
+      .query(({ input }) => getShopDailyOverview(input.date)),
+    saveDaily: protectedProcedure
+      .input(dailyClosingSchema)
+      .mutation(({ input, ctx }) =>
+        saveShopDailyClosing({
+          ...input,
+          countedCash: input.countedCash ?? null,
+          note: input.note ?? null,
+          createdBy: ctx.user.id,
+        })
+      ),
+    journal: protectedProcedure
+      .input(
+        z
+          .object({
+            from: dateSchema.optional(),
+            to: dateSchema.optional(),
+            side: z.enum(["debit", "credit"]).optional(),
+          })
+          .optional()
+      )
+      .query(({ input }) => listShopJournalEntries(input)),
+    createJournal: protectedProcedure
+      .input(shopJournalSchema)
+      .mutation(({ input, ctx }) =>
+        createShopJournalEntry({
+          ...input,
+          sourceType: null,
+          sourceId: null,
+          createdBy: ctx.user.id,
+        })
+      ),
+    removeJournal: adminOnlyProcedure
+      .input(z.object({ id: z.number().int().positive() }))
+      .mutation(({ input }) => deleteShopJournalEntry(input.id)),
+    hlawOo: protectedProcedure
+      .input(dateRangeSchema)
+      .query(({ input }) => listHlawOoEntries(input)),
+    createHlawOo: protectedProcedure
+      .input(hlawOoSchema)
+      .mutation(({ input, ctx }) =>
+        createHlawOoEntry({ ...input, createdBy: ctx.user.id })
+      ),
+    removeHlawOo: adminOnlyProcedure
+      .input(z.object({ id: z.number().int().positive() }))
+      .mutation(({ input }) => deleteHlawOoEntry(input.id)),
+    leaves: protectedProcedure
+      .input(dateRangeSchema)
+      .query(({ input }) => listStaffLeaveEntries(input)),
+    createLeave: protectedProcedure
+      .input(staffLeaveSchema)
+      .mutation(({ input, ctx }) =>
+        createStaffLeaveEntry({ ...input, createdBy: ctx.user.id })
+      ),
+    removeLeave: adminOnlyProcedure
+      .input(z.object({ id: z.number().int().positive() }))
+      .mutation(({ input }) => deleteStaffLeaveEntry(input.id)),
   }),
   admin: router({
     users: adminOnlyProcedure.query(() => listUsers()),

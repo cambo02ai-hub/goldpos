@@ -3,14 +3,28 @@ import { drizzle } from "drizzle-orm/mysql2";
 import {
   cashEntries,
   goldTransactions,
+  hlawOoEntries,
   InsertCashEntry,
+  InsertHlawOoEntry,
   InsertGoldTransaction,
   InsertPaymentSettlement,
+  InsertShopDailyClosing,
+  InsertShopJournalEntry,
+  InsertStaffLeaveEntry,
   InsertUser,
   paymentSettlements,
+  shopDailyClosings,
+  shopJournalEntries,
+  staffLeaveEntries,
   users,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
+import {
+  calculateHlawKyoot,
+  calculateNo2Weight,
+  estimateDailyGoldProfit,
+  goldWeight,
+} from "../shared/shop-calculations";
 
 type DateFilters = { from?: string; to?: string };
 type PaymentMethod = "cash" | "bank" | "kbzpay" | "wavepay" | "other";
@@ -78,7 +92,11 @@ function dateConditions(
   column:
     | typeof goldTransactions.tradeDate
     | typeof cashEntries.entryDate
-    | typeof paymentSettlements.settlementDate,
+    | typeof paymentSettlements.settlementDate
+    | typeof shopJournalEntries.entryDate
+    | typeof shopDailyClosings.closingDate
+    | typeof hlawOoEntries.serviceDate
+    | typeof staffLeaveEntries.leaveDate,
   filters?: DateFilters
 ) {
   const conditions = [];
@@ -117,12 +135,55 @@ export async function createGoldTransaction(input: InsertGoldTransaction) {
     paymentMethod: input.paymentMethod ?? "cash",
   };
   const result = await db.insert(goldTransactions).values(values);
+  const transactionId = Number((result as any)[0]?.insertId ?? 0);
+  if (transactionId && paidAmount > 0) {
+    await db.insert(shopJournalEntries).values({
+      entryDate: input.tradeDate,
+      side: input.transactionType === "sell" ? "debit" : "credit",
+      accountCode: input.transactionType === "sell" ? "1001" : "2001",
+      details: `${input.transactionType === "sell" ? "အရောင်း" : "အဝယ်"} · ${input.partyName}${input.itemName ? ` · ${input.itemName}` : ""}`,
+      kyat: input.kyat,
+      pae: input.pae,
+      yway: input.yway,
+      rate: input.rate,
+      price: amount,
+      amount: paidAmount,
+      sourceType: "gold_transaction",
+      sourceId: transactionId,
+      createdBy: input.createdBy,
+    });
+  }
   return result;
 }
 
 export async function deleteGoldTransaction(id: number) {
   const db = await getDb();
   if (!db) throw new Error("Database is not available");
+  const linkedSettlements = await db
+    .select({ id: paymentSettlements.id })
+    .from(paymentSettlements)
+    .where(eq(paymentSettlements.transactionId, id));
+  for (const settlement of linkedSettlements) {
+    await db
+      .delete(shopJournalEntries)
+      .where(
+        and(
+          eq(shopJournalEntries.sourceType, "settlement"),
+          eq(shopJournalEntries.sourceId, settlement.id)
+        )
+      );
+  }
+  await db
+    .delete(paymentSettlements)
+    .where(eq(paymentSettlements.transactionId, id));
+  await db
+    .delete(shopJournalEntries)
+    .where(
+      and(
+        eq(shopJournalEntries.sourceType, "gold_transaction"),
+        eq(shopJournalEntries.sourceId, id)
+      )
+    );
   return db.delete(goldTransactions).where(eq(goldTransactions.id, id));
 }
 
@@ -175,14 +236,45 @@ export async function createCashEntry(input: InsertCashEntry) {
   if (!db) throw new Error("Database is not available");
   if (Number(input.amount) <= 0)
     throw new Error("Amount must be greater than zero");
-  return db
+  const result = await db
     .insert(cashEntries)
     .values({ ...input, paymentMethod: input.paymentMethod ?? "cash" });
+  const entryId = Number((result as any)[0]?.insertId ?? 0);
+  const posting = {
+    income: { side: "debit" as const, accountCode: "1004" },
+    expense: { side: "credit" as const, accountCode: "2010" },
+    capital: { side: "debit" as const, accountCode: "1006" },
+    drawing: { side: "credit" as const, accountCode: "2006" },
+  }[input.entryType];
+  if (entryId)
+    await db.insert(shopJournalEntries).values({
+      entryDate: input.entryDate,
+      ...posting,
+      details: `${input.category}${input.counterparty ? ` · ${input.counterparty}` : ""}`,
+      kyat: 0,
+      pae: 0,
+      yway: 0,
+      rate: 0,
+      price: 0,
+      amount: input.amount,
+      sourceType: "cash_entry",
+      sourceId: entryId,
+      createdBy: input.createdBy,
+    });
+  return result;
 }
 
 export async function deleteCashEntry(id: number) {
   const db = await getDb();
   if (!db) throw new Error("Database is not available");
+  await db
+    .delete(shopJournalEntries)
+    .where(
+      and(
+        eq(shopJournalEntries.sourceType, "cash_entry"),
+        eq(shopJournalEntries.sourceId, id)
+      )
+    );
   return db.delete(cashEntries).where(eq(cashEntries.id, id));
 }
 
@@ -258,9 +350,35 @@ export async function createPaymentSettlement(input: InsertPaymentSettlement) {
     Number(transaction.amount) - Number(transaction.paidAmount) - settledAmount;
   if (Number(input.amount) <= 0 || Number(input.amount) > remaining)
     throw new Error("Settlement amount exceeds the remaining balance");
-  return db
+  const paymentMethod = input.paymentMethod ?? "cash";
+  const result = await db
     .insert(paymentSettlements)
-    .values({ ...input, paymentMethod: input.paymentMethod ?? "cash" });
+    .values({ ...input, paymentMethod });
+  const settlementId = Number((result as any)[0]?.insertId ?? 0);
+  if (settlementId)
+    await db.insert(shopJournalEntries).values({
+      entryDate: input.settlementDate,
+      side: input.settlementType === "collection" ? "debit" : "credit",
+      accountCode:
+        input.settlementType === "collection"
+          ? paymentMethod === "cash"
+            ? "1006"
+            : "1005"
+          : paymentMethod === "cash"
+            ? "2006"
+            : "2005",
+      details: `${input.settlementType === "collection" ? "အကြွေးလက်ခံ" : "အကြွေးပေးချေ"} · ${transaction.partyName}`,
+      kyat: 0,
+      pae: 0,
+      yway: 0,
+      rate: 0,
+      price: 0,
+      amount: input.amount,
+      sourceType: "settlement",
+      sourceId: settlementId,
+      createdBy: input.createdBy,
+    });
+  return result;
 }
 
 export async function getFinancialSummary(filters?: DateFilters) {
@@ -455,4 +573,433 @@ export async function updateUserRole(id: number, role: "user" | "admin") {
   const db = await getDb();
   if (!db) throw new Error("Database is not available");
   return db.update(users).set({ role }).where(eq(users.id, id));
+}
+
+export const SHOP_ACCOUNTS = [
+  { code: "1001", name: "အရောင်းစာရင်း", side: "debit", group: "နေ့စဉ်စာရင်း" },
+  { code: "1002", name: "လှော်ခ", side: "debit", group: "ဝန်ဆောင်မှု" },
+  { code: "1003", name: "AC အလဲစီးရီး", side: "debit", group: "စာရင်းညှိ" },
+  {
+    code: "1004",
+    name: "Other Income / အခြားဝင်ငွေ",
+    side: "debit",
+    group: "ဝင်ငွေ",
+  },
+  { code: "1005", name: "Banking In", side: "debit", group: "ဘဏ်ဝင်" },
+  { code: "1006", name: "စာရင်းညှိ (အဝင်)", side: "debit", group: "စာရင်းညှိ" },
+  { code: "1007", name: "No-2 အဝယ်", side: "debit", group: "No-2 စာရင်း" },
+  { code: "1008", name: "UMHO-In", side: "debit", group: "အခြားစာရင်း" },
+  { code: "1009", name: "DSH-In", side: "debit", group: "အခြားစာရင်း" },
+  { code: "2001", name: "အဝယ်စာရင်း", side: "credit", group: "နေ့စဉ်စာရင်း" },
+  {
+    code: "2002",
+    name: "လုပ်ငန်းသုံးပစ္စည်း",
+    side: "credit",
+    group: "လုပ်ငန်းစရိတ်",
+  },
+  { code: "2003", name: "လဲခ", side: "credit", group: "လုပ်ငန်းစရိတ်" },
+  { code: "2004", name: "ရရန်စာရင်း", side: "credit", group: "အကြွေး/ညှိ" },
+  { code: "2005", name: "Banking-Out", side: "credit", group: "ဘဏ်ထွက်" },
+  {
+    code: "2006",
+    name: "စာရင်းညှိ (အထွက်)",
+    side: "credit",
+    group: "စာရင်းညှိ",
+  },
+  {
+    code: "2007",
+    name: "No-2 အရောင်းစာရင်း",
+    side: "credit",
+    group: "No-2 စာရင်း",
+  },
+  { code: "2008", name: "စက်သုံးဆီ", side: "credit", group: "လုပ်ငန်းစရိတ်" },
+  { code: "2009", name: "Profit / အမြတ်", side: "credit", group: "အမြတ်" },
+  {
+    code: "2010",
+    name: "အထွေထွေစရိတ်",
+    side: "credit",
+    group: "လုပ်ငန်းစရိတ်",
+  },
+  {
+    code: "2011",
+    name: "ရွှေတော + UMHO",
+    side: "credit",
+    group: "အခြားစာရင်း",
+  },
+  { code: "2012", name: "DSH-Out", side: "credit", group: "အခြားစာရင်း" },
+  { code: "2013", name: "အခွန် / အခ", side: "credit", group: "အခွန်" },
+] as const;
+
+export async function listShopJournalEntries(
+  filters?: DateFilters & { side?: "debit" | "credit" }
+) {
+  const db = await getDb();
+  if (!db) return [];
+  const conditions = dateConditions(shopJournalEntries.entryDate, filters);
+  if (filters?.side) conditions.push(eq(shopJournalEntries.side, filters.side));
+  return db
+    .select()
+    .from(shopJournalEntries)
+    .where(conditions.length ? and(...conditions) : undefined)
+    .orderBy(desc(shopJournalEntries.entryDate), desc(shopJournalEntries.id));
+}
+
+export async function createShopJournalEntry(input: InsertShopJournalEntry) {
+  const db = await getDb();
+  if (!db) throw new Error("Database is not available");
+  const account = SHOP_ACCOUNTS.find(item => item.code === input.accountCode);
+  if (!account) throw new Error("Account code was not found");
+  if (account.side !== input.side)
+    throw new Error(
+      "Debit/Credit side does not match the selected account code"
+    );
+  if (Number(input.amount) <= 0)
+    throw new Error("Amount must be greater than zero");
+  return db.insert(shopJournalEntries).values(input);
+}
+
+export async function deleteShopJournalEntry(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database is not available");
+  const [row] = await db
+    .select({ sourceType: shopJournalEntries.sourceType })
+    .from(shopJournalEntries)
+    .where(eq(shopJournalEntries.id, id))
+    .limit(1);
+  if (!row || row.sourceType)
+    throw new Error("Only manual journal entries can be removed here");
+  return db.delete(shopJournalEntries).where(eq(shopJournalEntries.id, id));
+}
+
+async function getBookTotals(date: string) {
+  const db = await getDb();
+  if (!db) return { debit: 0, credit: 0 };
+  const [row] = await db
+    .select({
+      debit: sql<number>`coalesce(sum(case when ${shopJournalEntries.side} = 'debit' then ${shopJournalEntries.amount} else 0 end), 0)`,
+      credit: sql<number>`coalesce(sum(case when ${shopJournalEntries.side} = 'credit' then ${shopJournalEntries.amount} else 0 end), 0)`,
+    })
+    .from(shopJournalEntries)
+    .where(eq(shopJournalEntries.entryDate, date));
+  return { debit: Number(row?.debit ?? 0), credit: Number(row?.credit ?? 0) };
+}
+
+export async function getShopDailyOverview(date: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database is not available");
+  const [currentRows, priorRows, goldSummary, journal] = await Promise.all([
+    db
+      .select()
+      .from(shopDailyClosings)
+      .where(eq(shopDailyClosings.closingDate, date))
+      .limit(1),
+    db
+      .select()
+      .from(shopDailyClosings)
+      .where(lte(shopDailyClosings.closingDate, date))
+      .orderBy(desc(shopDailyClosings.closingDate))
+      .limit(1),
+    getGoldSummary({ from: date, to: date }),
+    listShopJournalEntries({ from: date, to: date }),
+  ]);
+  const current = currentRows[0];
+  const previous =
+    priorRows[0]?.closingDate === date ? undefined : priorRows[0];
+  const previousDate = previous?.closingDate;
+  const previousTotals = previousDate
+    ? await getBookTotals(previousDate)
+    : { debit: 0, credit: 0 };
+  const [betweenTrades, betweenJournal] = previousDate
+    ? await Promise.all([
+        listGoldTransactions({ from: previousDate, to: date }),
+        listShopJournalEntries({ from: previousDate, to: date }),
+      ])
+    : [[], []];
+  const interveningTrades = betweenTrades.filter(
+    transaction =>
+      transaction.tradeDate > previousDate! && transaction.tradeDate < date
+  );
+  const interveningJournal = betweenJournal.filter(
+    entry => entry.entryDate > previousDate! && entry.entryDate < date
+  );
+  const interimCashMovement = interveningJournal.reduce(
+    (balance, entry) =>
+      balance + (entry.side === "debit" ? 1 : -1) * Number(entry.amount),
+    0
+  );
+  const previousCash = previous
+    ? previous.countedCash === null
+      ? Number(previous.openingCash) +
+        previousTotals.debit -
+        previousTotals.credit +
+        interimCashMovement
+      : Number(previous.countedCash) + interimCashMovement
+    : 0;
+  const previousGoldWeight = previous
+    ? goldWeight({
+        kyat: Number(previous.closingGoldKyat),
+        pae: Number(previous.closingGoldPae),
+        yway: Number(previous.closingGoldYway),
+      }) +
+      interveningTrades.reduce(
+        (weight, transaction) =>
+          weight +
+          (transaction.transactionType === "buy" ? 1 : -1) *
+            goldWeight({
+              kyat: Number(transaction.kyat),
+              pae: Number(transaction.pae),
+              yway: Number(transaction.yway),
+            }),
+        0
+      )
+    : 0;
+  const previousGoldValue = previous
+    ? Math.round(
+        (Number(previous.closingGoldKyat) +
+          Number(previous.closingGoldPae) / 16 +
+          Number(previous.closingGoldYway) / 128) *
+          Number(previous.closingGoldRate)
+      ) +
+      interveningTrades.reduce(
+        (value, transaction) =>
+          value +
+          (transaction.transactionType === "buy" ? 1 : -1) *
+            Number(transaction.amount),
+        0
+      )
+    : 0;
+  const opening = current
+    ? {
+        cash: Number(current.openingCash),
+        goldKyat: Number(current.openingGoldKyat),
+        goldPae: Number(current.openingGoldPae),
+        goldYway: Number(current.openingGoldYway),
+        goldValue: Number(current.openingGoldValue),
+      }
+    : {
+        cash: previousCash,
+        goldKyat: previous ? Math.floor(Math.max(0, previousGoldWeight)) : 0,
+        goldPae: previous
+          ? Math.floor((Math.max(0, previousGoldWeight) % 1) * 16)
+          : 0,
+        goldYway: previous
+          ? Math.round(
+              (Math.max(0, previousGoldWeight) % (1 / 16)) * 128 * 10
+            ) / 10
+          : 0,
+        goldValue: previousGoldValue,
+      };
+  const totals = journal.reduce(
+    (result, entry) => {
+      result[entry.side] += Number(entry.amount);
+      return result;
+    },
+    { debit: 0, credit: 0 }
+  );
+  const expectedCash = opening.cash + totals.debit - totals.credit;
+  const closing = current
+    ? {
+        goldKyat: Number(current.closingGoldKyat),
+        goldPae: Number(current.closingGoldPae),
+        goldYway: Number(current.closingGoldYway),
+        goldRate: Number(current.closingGoldRate),
+        countedCash:
+          current.countedCash === null ? null : Number(current.countedCash),
+        note: current.note,
+      }
+    : null;
+  const closingValue = closing
+    ? Math.round(
+        goldWeight({
+          kyat: closing.goldKyat,
+          pae: closing.goldPae,
+          yway: closing.goldYway,
+        }) * closing.goldRate
+      )
+    : 0;
+  return {
+    date,
+    opening,
+    closing,
+    sales: goldSummary.sellAmount,
+    purchases: goldSummary.buyAmount,
+    soldWeight: goldSummary.sellWeight,
+    boughtWeight: goldSummary.buyWeight,
+    debit: totals.debit,
+    credit: totals.credit,
+    expectedCash,
+    cashVariance:
+      closing?.countedCash === null || closing?.countedCash === undefined
+        ? null
+        : closing.countedCash - expectedCash,
+    closingValue,
+    estimatedGoldProfit: closing
+      ? estimateDailyGoldProfit({
+          sales: goldSummary.sellAmount,
+          purchases: goldSummary.buyAmount,
+          openingValue: opening.goldValue,
+          closingWeight: {
+            kyat: closing.goldKyat,
+            pae: closing.goldPae,
+            yway: closing.goldYway,
+          },
+          closingRate: closing.goldRate,
+        })
+      : null,
+    isClosed: Boolean(current),
+  };
+}
+
+export async function saveShopDailyClosing(input: InsertShopDailyClosing) {
+  const db = await getDb();
+  if (!db) throw new Error("Database is not available");
+  const weightNumbers = [
+    input.openingGoldKyat,
+    input.openingGoldPae,
+    input.openingGoldYway,
+    input.closingGoldKyat,
+    input.closingGoldPae,
+    input.closingGoldYway,
+  ];
+  if (weightNumbers.some(value => Number(value) < 0))
+    throw new Error("Gold weight cannot be negative");
+  if (Number(input.openingCash) < 0 || Number(input.closingGoldRate) < 0)
+    throw new Error("Opening cash and gold rate cannot be negative");
+  return db
+    .insert(shopDailyClosings)
+    .values(input)
+    .onDuplicateKeyUpdate({
+      set: {
+        openingCash: input.openingCash,
+        openingGoldKyat: input.openingGoldKyat,
+        openingGoldPae: input.openingGoldPae,
+        openingGoldYway: input.openingGoldYway,
+        openingGoldValue: input.openingGoldValue,
+        closingGoldKyat: input.closingGoldKyat,
+        closingGoldPae: input.closingGoldPae,
+        closingGoldYway: input.closingGoldYway,
+        closingGoldRate: input.closingGoldRate,
+        countedCash: input.countedCash,
+        note: input.note,
+        createdBy: input.createdBy,
+      },
+    });
+}
+
+export async function listHlawOoEntries(filters?: DateFilters) {
+  const db = await getDb();
+  if (!db) return [];
+  const conditions = dateConditions(hlawOoEntries.serviceDate, filters);
+  const rows = await db
+    .select()
+    .from(hlawOoEntries)
+    .where(conditions.length ? and(...conditions) : undefined)
+    .orderBy(desc(hlawOoEntries.serviceDate), desc(hlawOoEntries.id));
+  return rows.map(row => {
+    const no2 = calculateNo2Weight({
+      kyat: Number(row.hlawKyat),
+      pae: Number(row.hlawPae),
+      yway: Number(row.hlawYway),
+    });
+    const kyoot = calculateHlawKyoot(
+      {
+        kyat: Number(row.hlawKyat),
+        pae: Number(row.hlawPae),
+        yway: Number(row.hlawYway),
+      },
+      {
+        kyat: Number(row.tinKyat),
+        pae: Number(row.tinPae),
+        htwe: Number(row.tinHtwe),
+      }
+    );
+    return {
+      ...row,
+      no2Kyat: no2.kyat,
+      no2Pae: no2.pae,
+      no2Yway: no2.yway,
+      kyoot,
+    };
+  });
+}
+
+export async function createHlawOoEntry(input: InsertHlawOoEntry) {
+  const db = await getDb();
+  if (!db) throw new Error("Database is not available");
+  if (!input.customerName.trim()) throw new Error("Customer name is required");
+  if (
+    [
+      input.hlawKyat,
+      input.hlawPae,
+      input.hlawYway,
+      input.tinKyat,
+      input.tinPae,
+      input.tinHtwe,
+      input.serviceFee,
+    ].some(value => Number(value) < 0)
+  )
+    throw new Error("Weight and fee cannot be negative");
+  const result = await db.insert(hlawOoEntries).values(input);
+  const entryId = Number((result as any)[0]?.insertId ?? 0);
+  if (entryId && Number(input.serviceFee) > 0) {
+    await db.insert(shopJournalEntries).values({
+      entryDate: input.serviceDate,
+      side: "debit",
+      accountCode: "1002",
+      details: `လှော်ခ · ${input.customerName}`,
+      kyat: input.hlawKyat ?? 0,
+      pae: input.hlawPae ?? 0,
+      yway: input.hlawYway ?? 0,
+      rate: 0,
+      price: 0,
+      amount: input.serviceFee ?? 0,
+      sourceType: "hlaw_oo",
+      sourceId: entryId,
+      createdBy: input.createdBy,
+    });
+  }
+  return result;
+}
+
+export async function deleteHlawOoEntry(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database is not available");
+  await db
+    .delete(shopJournalEntries)
+    .where(
+      and(
+        eq(shopJournalEntries.sourceType, "hlaw_oo"),
+        eq(shopJournalEntries.sourceId, id)
+      )
+    );
+  return db.delete(hlawOoEntries).where(eq(hlawOoEntries.id, id));
+}
+
+export async function listStaffLeaveEntries(filters?: DateFilters) {
+  const db = await getDb();
+  if (!db) return [];
+  const conditions = dateConditions(staffLeaveEntries.leaveDate, filters);
+  return db
+    .select()
+    .from(staffLeaveEntries)
+    .where(conditions.length ? and(...conditions) : undefined)
+    .orderBy(desc(staffLeaveEntries.leaveDate), staffLeaveEntries.employeeName);
+}
+
+export async function createStaffLeaveEntry(input: InsertStaffLeaveEntry) {
+  const db = await getDb();
+  if (!db) throw new Error("Database is not available");
+  if (
+    !input.employeeName.trim() ||
+    Number(input.dayUnits) <= 0 ||
+    Number(input.dayUnits) > 1
+  )
+    throw new Error("Employee name and leave units (0–1 day) are required");
+  return db.insert(staffLeaveEntries).values(input);
+}
+
+export async function deleteStaffLeaveEntry(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database is not available");
+  return db.delete(staffLeaveEntries).where(eq(staffLeaveEntries.id, id));
 }

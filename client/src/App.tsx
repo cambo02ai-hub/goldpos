@@ -9,6 +9,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import Finance from "./pages/Finance";
 import Home from "./pages/Home";
 import NewEntry from "./pages/NewEntry";
+import ShopWorkflow from "./pages/ShopWorkflow";
 
 function Router() {
   return (
@@ -26,6 +27,11 @@ function Router() {
       <Route path="/finance">
         <DashboardLayout>
           <Finance />
+        </DashboardLayout>
+      </Route>
+      <Route path="/shop-book">
+        <DashboardLayout>
+          <ShopWorkflow />
         </DashboardLayout>
       </Route>
       <Route path="/admin">
