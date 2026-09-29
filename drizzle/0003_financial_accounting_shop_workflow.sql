@@ -97,6 +97,8 @@ CREATE TABLE `staff_leave_entries` (
 ALTER TABLE `gold_transactions` ADD `paymentMethod` enum('cash','bank','kbzpay','wavepay','other') DEFAULT 'cash' NOT NULL;--> statement-breakpoint
 ALTER TABLE `gold_transactions` ADD `paidAmount` bigint DEFAULT 0 NOT NULL;
 --> statement-breakpoint
+UPDATE `gold_transactions` SET `paidAmount` = `amount`;
+--> statement-breakpoint
 INSERT INTO `shop_journal_entries` (`entryDate`, `side`, `accountCode`, `details`, `kyat`, `pae`, `yway`, `rate`, `price`, `amount`, `sourceType`, `sourceId`, `createdBy`)
 SELECT `tradeDate`, CASE WHEN `transactionType` = 'sell' THEN 'debit' ELSE 'credit' END, CASE WHEN `transactionType` = 'sell' THEN '1001' ELSE '2001' END, CONCAT(CASE WHEN `transactionType` = 'sell' THEN 'အရောင်း · ' ELSE 'အဝယ် · ' END, `partyName`, IF(`itemName` IS NULL OR `itemName` = '', '', CONCAT(' · ', `itemName`))), `kyat`, `pae`, `yway`, `rate`, `amount`, `paidAmount`, 'gold_transaction', `id`, `createdBy`
 FROM `gold_transactions` WHERE `paidAmount` > 0;

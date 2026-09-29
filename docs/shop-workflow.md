@@ -24,4 +24,4 @@ The workbook contains six sheets. The implementation adds a **Shop Book** worksp
 
 ## Deployment
 
-Apply the new Drizzle migration in the deployment environment (`drizzle/0003_financial_accounting_shop_workflow.sql`) using the repository's normal database migration process (currently `pnpm db:push`). The migration creates the accounting and workflow tables and backfills existing POS trades, cash entries and settlements into the shop journal.
+Apply the new Drizzle migration in the deployment environment (`drizzle/0003_financial_accounting_shop_workflow.sql`) using the repository's normal database migration process (currently `pnpm db:push`). The migration creates the accounting and workflow tables, treats pre-existing trades as fully settled (as they predate payment tracking), and backfills existing POS trades, cash entries and settlements into the shop journal.
