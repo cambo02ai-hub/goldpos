@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { trpc } from "@/lib/trpc";
+import { goldWeightParts } from "@shared/shop-calculations";
 import {
   ArrowDownLeft,
   ArrowUpRight,
@@ -37,6 +38,10 @@ const formatDate = (date: string) =>
     month: "short",
     year: "numeric",
   });
+const formatGoldWeight = (weight: number) => {
+  const parts = goldWeightParts(Math.max(0, weight));
+  return `${formatNumber(parts.kyat)} ကျပ် ${formatNumber(parts.pae)} ပဲ ${formatNumber(parts.yway, 1)} ရွေး`;
+};
 
 export default function Home() {
   const { user } = useAuth();
@@ -62,6 +67,15 @@ export default function Home() {
     refetchInterval: viewMode === "today" ? 30000 : false,
     refetchOnWindowFocus: true,
   });
+  const stockDate = dateFilter || todayDate;
+  const dailyQuery = trpc.shopBook.daily.useQuery(
+    { date: stockDate },
+    {
+      enabled: Boolean(user),
+      refetchInterval: 30000,
+      refetchOnWindowFocus: true,
+    }
+  );
   const removeMutation = trpc.ledger.remove.useMutation({
     onSuccess: () => {
       void utils.ledger.list.invalidate();
@@ -146,6 +160,76 @@ export default function Home() {
             tone="green"
           />
         </section>
+        <Card className="rounded-2xl border-[#dfe8e2] shadow-sm">
+          <CardHeader className="border-b border-[#edf1ee] bg-white px-4 py-4 sm:px-6">
+            <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#2c6e49]">
+                  Daily stock balance
+                </p>
+                <CardTitle className="mt-1 text-xl">ယနေ့ရွှေလက်ကျန်</CardTitle>
+              </div>
+              <p className="text-sm text-[#78867e]">{formatDate(stockDate)}</p>
+            </div>
+            <p className="text-sm text-[#78867e]">
+              အဖွင့်လက်ကျန် + ဝယ် − ရောင်း = မျှော်မှန်းပိတ်လက်ကျန်
+            </p>
+          </CardHeader>
+          <CardContent className="p-4 sm:p-6">
+            {dailyQuery.isLoading ? (
+              <p className="py-4 text-center text-sm text-[#89968d]">
+                လက်ကျန်စာရင်းတွက်နေပါသည်…
+              </p>
+            ) : (
+              <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                <StockMetric
+                  label="အဖွင့်လက်ကျန်"
+                  value={formatGoldWeight(
+                    dailyQuery.data?.stockBalance?.openingWeight ?? 0
+                  )}
+                  hint="ယခင်နေ့ပိတ်လက်ကျန်မှ"
+                  tone="blue"
+                />
+                <StockMetric
+                  label="ယနေ့ဝယ်"
+                  value={formatGoldWeight(
+                    dailyQuery.data?.stockBalance?.boughtWeight ?? 0
+                  )}
+                  hint="POS အဝယ်စုစုပေါင်း"
+                  tone="green"
+                />
+                <StockMetric
+                  label="ယနေ့ရောင်း"
+                  value={formatGoldWeight(
+                    dailyQuery.data?.stockBalance?.soldWeight ?? 0
+                  )}
+                  hint="POS အရောင်းစုစုပေါင်း"
+                  tone="orange"
+                />
+                <StockMetric
+                  label="မျှော်မှန်းပိတ်လက်ကျန်"
+                  value={formatGoldWeight(
+                    dailyQuery.data?.stockBalance?.expectedClosingWeight ?? 0
+                  )}
+                  hint="အလိုအလျောက်တွက်ချက်မှု"
+                  tone="purple"
+                />
+              </div>
+            )}
+            {dailyQuery.data?.closing && (
+              <p className="mt-4 rounded-lg border border-[#e5ebe7] bg-[#f8fbf9] p-3 text-sm text-[#53645b]">
+                လက်တွေ့ပိတ်လက်ကျန်:{" "}
+                <b>
+                  {formatGoldWeight(
+                    dailyQuery.data.closing.goldKyat +
+                      dailyQuery.data.closing.goldPae / 16 +
+                      dailyQuery.data.closing.goldYway / 128
+                  )}
+                </b>
+              </p>
+            )}
+          </CardContent>
+        </Card>
         <Card className="rounded-2xl border-[#dfe8e2] shadow-sm">
           <CardHeader className="gap-3 border-b border-[#edf1ee] bg-white px-4 py-4 sm:px-6">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -599,6 +683,38 @@ function DeleteButton({ onClick }: { onClick: () => void }) {
     >
       <Trash2 className="h-4 w-4" />
     </Button>
+  );
+}
+function StockMetric({
+  label,
+  value,
+  hint,
+  tone,
+}: {
+  label: string;
+  value: string;
+  hint: string;
+  tone: "green" | "orange" | "blue" | "purple";
+}) {
+  const tones = {
+    green: "bg-[#e9f5ed] text-[#286442]",
+    orange: "bg-[#fff2e6] text-[#a25b12]",
+    blue: "bg-[#eaf2fa] text-[#35678d]",
+    purple: "bg-[#f1edfa] text-[#7055a2]",
+  };
+  return (
+    <div className="rounded-xl border border-[#e5ebe7] bg-white p-3 shadow-sm sm:p-4">
+      <p className="text-xs font-semibold text-[#748079]">{label}</p>
+      <p className="mt-1 text-base font-bold leading-6 text-[#17201d] sm:text-lg">
+        {value}
+      </p>
+      <p className="mt-1 text-xs text-[#89968d]">{hint}</p>
+      <span
+        className={`mt-2 inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold ${tones[tone]}`}
+      >
+        ကျပ်/ပဲ/ရွေး
+      </span>
+    </div>
   );
 }
 function SummaryCard({
