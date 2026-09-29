@@ -42,6 +42,7 @@ function NumberField({
   min = "0",
   step = "1",
   max,
+  disabled = false,
 }: {
   label: string;
   value: string;
@@ -49,6 +50,7 @@ function NumberField({
   min?: string;
   step?: string;
   max?: string;
+  disabled?: boolean;
 }) {
   return (
     <label className="block text-sm font-medium text-[#53645b]">
@@ -60,6 +62,7 @@ function NumberField({
         min={min}
         max={max}
         step={step}
+        disabled={disabled}
         value={value}
         onChange={event => onChange(event.target.value)}
       />
@@ -292,6 +295,7 @@ export default function ShopWorkflow() {
     [leaveRows]
   );
   const stockBalance = daily?.stockBalance;
+  const openingGoldIsCarryForward = daily?.openingSource === "previous_closing";
   const closeValue = Math.round(
     (inputNumber(closingForm.closingGoldKyat) +
       inputNumber(closingForm.closingGoldPae) / 16 +
@@ -551,6 +555,32 @@ export default function ShopWorkflow() {
                       <h3 className="mb-3 text-sm font-bold text-[#2c6e49]">
                         အဖွင့်လက်ကျန်
                       </h3>
+                      <div
+                        className={`mb-3 rounded-lg border p-3 text-sm ${
+                          openingGoldIsCarryForward
+                            ? "border-[#cfe3d4] bg-[#f1f9f3] text-[#286442]"
+                            : "border-[#f1ddbd] bg-[#fff9ef] text-[#8b5a19]"
+                        }`}
+                      >
+                        {openingGoldIsCarryForward ? (
+                          <>
+                            <b>အလိုအလျောက်ဆက်ယူထားသည်။</b> ဤရက်၏ Opening Gold
+                            သည် ယခင်နေ့ Closing Gold မှ formula
+                            ဖြင့်ယူထားခြင်းဖြစ်ပြီး ပြင်ဆင်၍မရပါ။
+                            {daily?.previousClosingDate && (
+                              <> Source: {daily.previousClosingDate}</>
+                            )}
+                          </>
+                        ) : (
+                          <>
+                            <b>ပထမဆုံးစာရင်းနေ့ ဖြစ်ပါသည်။</b> ဆိုင်၏
+                            စတင်ရွှေလက်ကျန် (Opening Gold) ကို ကျပ်၊ ပဲ၊
+                            ရွေးနှင့် တန်ဖိုးအတိုင်း ကိုယ်တိုင် ဖြည့်ပါ။
+                            နောက်ရက်များတွင် ယခင်နေ့ Closing မှ အလိုအလျောက်
+                            ဆက်ယူပါမည်။
+                          </>
+                        )}
+                      </div>
                       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
                         <NumberField
                           label="အဖွင့်ငွေ (ကျပ်)"
@@ -560,6 +590,7 @@ export default function ShopWorkflow() {
                         <NumberField
                           label="အဖွင့်ရွှေ ကျပ်သား"
                           value={closingForm.openingGoldKyat}
+                          disabled={openingGoldIsCarryForward}
                           onChange={v => updateClose("openingGoldKyat", v)}
                         />
                         <NumberField
@@ -567,6 +598,7 @@ export default function ShopWorkflow() {
                           value={closingForm.openingGoldPae}
                           max="15"
                           step="1"
+                          disabled={openingGoldIsCarryForward}
                           onChange={v => updateClose("openingGoldPae", v)}
                         />
                         <NumberField
@@ -574,11 +606,13 @@ export default function ShopWorkflow() {
                           value={closingForm.openingGoldYway}
                           max="127"
                           step="0.1"
+                          disabled={openingGoldIsCarryForward}
                           onChange={v => updateClose("openingGoldYway", v)}
                         />
                         <NumberField
                           label="အဖွင့်ရွှေ တန်ဖိုး (ကျပ်)"
                           value={closingForm.openingGoldValue}
+                          disabled={openingGoldIsCarryForward}
                           onChange={v => updateClose("openingGoldValue", v)}
                         />
                       </div>
@@ -587,24 +621,32 @@ export default function ShopWorkflow() {
                       <h3 className="mb-3 text-sm font-bold text-[#2c6e49]">
                         ပိတ်လက်ကျန်နှင့် ငွေစစ်ဆေးခြင်း
                       </h3>
+                      <div className="mb-3 rounded-lg border border-[#cfe3d4] bg-[#f1f9f3] p-3 text-sm text-[#286442]">
+                        <b>ပိတ်ရွှေလက်ကျန်ကို ကိုယ်တိုင်ထည့်ရန် မလိုပါ။</b>
+                        ဝယ်/ရောင်းစာရင်းကို အခြေခံပြီး system က
+                        အလိုအလျောက်တွက်ကာ သိမ်းပါမည်။
+                      </div>
                       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
                         <NumberField
-                          label="ပိတ်ရွှေ ကျပ်သား"
+                          label="တွက်ချက်ထားသော ပိတ်ရွှေ ကျပ်သား"
                           value={closingForm.closingGoldKyat}
+                          disabled
                           onChange={v => updateClose("closingGoldKyat", v)}
                         />
                         <NumberField
-                          label="ပဲ"
+                          label="တွက်ချက်ထားသော ပဲ"
                           value={closingForm.closingGoldPae}
                           max="15"
                           step="1"
+                          disabled
                           onChange={v => updateClose("closingGoldPae", v)}
                         />
                         <NumberField
-                          label="ရွေး"
+                          label="တွက်ချက်ထားသော ရွေး"
                           value={closingForm.closingGoldYway}
                           max="127"
                           step="0.1"
+                          disabled
                           onChange={v => updateClose("closingGoldYway", v)}
                         />
                         <NumberField
@@ -653,8 +695,8 @@ export default function ShopWorkflow() {
                       >
                         <Check className="mr-2 h-4 w-4" />
                         {daily?.isClosed
-                          ? "ပြင်ဆင်ပြီး ပိတ်စာရင်းသိမ်းရန်"
-                          : "နေ့စာရင်းပိတ်ရန်"}
+                          ? "ပြန်တွက်ပြီး စာရင်းသိမ်းရန်"
+                          : "အလိုအလျောက်တွက်ပြီး စာရင်းပိတ်ရန်"}
                       </Button>
                       <span className="text-xs text-[#89968d]">
                         အမြတ်က ခန့်မှန်းတန်ဖိုးဖြစ်ပြီး စတင်ရွှေတန်ဖိုးနှင့်

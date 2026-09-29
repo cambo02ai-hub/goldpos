@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { trpc } from "@/lib/trpc";
+import { goldWeightParts } from "@shared/shop-calculations";
 import {
   CalendarDays,
   CheckCircle2,
@@ -18,6 +19,10 @@ import { toast } from "sonner";
 const today = () => new Date().toISOString().slice(0, 10);
 const formatNumber = (value: number) =>
   new Intl.NumberFormat("en-US").format(value || 0);
+const formatWeight = (value: number) => {
+  const parts = goldWeightParts(Math.max(0, value));
+  return `${formatNumber(parts.kyat)} ကျပ် ${formatNumber(parts.pae)} ပဲ ${formatNumber(parts.yway)}`;
+};
 type PaymentMethod = "cash" | "bank" | "kbzpay" | "wavepay" | "other";
 const emptyForm = {
   tradeDate: today(),
@@ -38,7 +43,32 @@ export default function NewEntry() {
   const { user } = useAuth();
   const [form, setForm] = useState<FormState>(emptyForm);
   const [showOptional, setShowOptional] = useState(false);
+  const [showPayment, setShowPayment] = useState(false);
+  const [lastRates, setLastRates] = useState<Record<"sell" | "buy", string>>(
+    () => {
+      if (typeof window === "undefined") return { sell: "", buy: "" };
+      return {
+        sell: window.localStorage.getItem("goldpos-last-rate-sell") ?? "",
+        buy: window.localStorage.getItem("goldpos-last-rate-buy") ?? "",
+      };
+    }
+  );
   const utils = trpc.useUtils();
+  const customerQuery = trpc.ledger.list.useQuery(undefined, {
+    enabled: Boolean(user),
+    staleTime: 60000,
+  });
+  const dailyQuery = trpc.shopBook.daily.useQuery(
+    { date: form.tradeDate },
+    { enabled: Boolean(user), refetchOnWindowFocus: true }
+  );
+  const customerNames = Array.from(
+    new Set(
+      (customerQuery.data ?? [])
+        .map(row => row.partyName.trim())
+        .filter(Boolean)
+    )
+  ).slice(0, 100);
   const createMutation = trpc.ledger.create.useMutation({
     onSuccess: () => {
       toast.success("စာရင်းသွင်းပြီးပါပြီ");
@@ -46,9 +76,20 @@ export default function NewEntry() {
         ...emptyForm,
         tradeDate: form.tradeDate,
         transactionType: form.transactionType,
+        rate: form.rate,
       });
+      setShowPayment(false);
+      window.localStorage.setItem(
+        `goldpos-last-rate-${form.transactionType}`,
+        form.rate
+      );
+      setLastRates(previous => ({
+        ...previous,
+        [form.transactionType]: form.rate,
+      }));
       void utils.ledger.list.invalidate();
       void utils.ledger.summary.invalidate();
+      void dailyQuery.refetch();
     },
     onError: error =>
       toast.error(error.message || "စာရင်းသွင်းရာတွင် အမှားရှိပါသည်"),
@@ -63,6 +104,20 @@ export default function NewEntry() {
   const paidAmount =
     form.paidAmount === "" ? calculatedAmount : Number(form.paidAmount || 0);
   const isCredit = paidAmount < calculatedAmount;
+  const currentStock =
+    dailyQuery.data?.stockBalance?.expectedClosingWeight ?? 0;
+  const entryWeight = weight;
+  const stockAfterEntry =
+    currentStock +
+    (form.transactionType === "buy" ? entryWeight : -entryWeight);
+  const updateType = (value: string) => {
+    const transactionType = value as "sell" | "buy";
+    setForm(previous => ({
+      ...previous,
+      transactionType,
+      rate: previous.rate || lastRates[transactionType],
+    }));
+  };
   const submit = (event: React.FormEvent) => {
     event.preventDefault();
     if (!form.partyName.trim()) return toast.error("အမည် ဖြည့်ပေးပါ");
@@ -70,6 +125,8 @@ export default function NewEntry() {
       return toast.error("Rate ဖြည့်ပေးပါ");
     if (calculatedAmount <= 0)
       return toast.error("အလေးချိန်ကို မှန်ကန်စွာ ဖြည့်ပေးပါ");
+    if (Number(form.pae || 0) > 15 || Number(form.yway || 0) > 127)
+      return toast.error("ပဲနှင့် ရွေးပမာဏကို မှန်ကန်စွာ ဖြည့်ပေးပါ");
     if (paidAmount < 0 || paidAmount > calculatedAmount)
       return toast.error("လက်ခံ/ပေးချေပြီးငွေသည် စုစုပေါင်းထက် မကျော်ရပါ");
     createMutation.mutate({
@@ -85,6 +142,10 @@ export default function NewEntry() {
       paidAmount,
       note: form.note.trim() || undefined,
     });
+    window.localStorage.setItem(
+      `goldpos-last-rate-${form.transactionType}`,
+      form.rate
+    );
   };
 
   return (
@@ -108,7 +169,8 @@ export default function NewEntry() {
               <div>
                 <CardTitle className="text-xl">အရောင်းအဝယ် အချက်အလက်</CardTitle>
                 <p className="mt-1 text-sm text-[#78867e]">
-                  * အမှတ်အသားပါသော field များကို မဖြစ်မနေဖြည့်ပါ။
+                  အမည်၊ အလေးချိန်နှင့် Rate ဖြည့်ပြီး စာရင်းသွင်းပါ။ Amount
+                  နှင့် Stock လက်ကျန်ကို အလိုအလျောက်တွက်ပေးပါမည်။
                 </p>
               </div>
               <div className="rounded-xl bg-[#e8f5eb] p-3 text-[#2c6e49]">
@@ -129,10 +191,7 @@ export default function NewEntry() {
                 </div>
                 <div className="space-y-1.5">
                   <Label>အမျိုးအစား</Label>
-                  <Tabs
-                    value={form.transactionType}
-                    onValueChange={value => update("transactionType", value)}
-                  >
+                  <Tabs value={form.transactionType} onValueChange={updateType}>
                     <TabsList className="grid w-full grid-cols-2 bg-[#eef4ef]">
                       <TabsTrigger
                         value="sell"
@@ -157,9 +216,15 @@ export default function NewEntry() {
                   <Input
                     autoFocus
                     placeholder="ဥပမာ - ကိုဖိုးထူး"
+                    list="goldpos-customer-names"
                     value={form.partyName}
                     onChange={e => update("partyName", e.target.value)}
                   />
+                  <datalist id="goldpos-customer-names">
+                    {customerNames.map(name => (
+                      <option key={name} value={name} />
+                    ))}
+                  </datalist>
                 </div>
                 <div className="space-y-1.5">
                   <Label>ပစ္စည်းအမည်</Label>
@@ -183,11 +248,13 @@ export default function NewEntry() {
                   <WeightInput
                     label="ပဲ"
                     value={form.pae}
+                    max="15"
                     onChange={value => update("pae", value)}
                   />
                   <WeightInput
                     label="ရွေး"
                     value={form.yway}
+                    max="127"
                     onChange={value => update("yway", value)}
                     step="0.1"
                   />
@@ -205,6 +272,18 @@ export default function NewEntry() {
                     value={form.rate}
                     onChange={e => update("rate", e.target.value)}
                   />
+                  <button
+                    type="button"
+                    onClick={() =>
+                      update("rate", lastRates[form.transactionType])
+                    }
+                    disabled={!lastRates[form.transactionType]}
+                    className="mt-1 text-left text-xs font-semibold text-[#2c6e49] hover:underline disabled:cursor-not-allowed disabled:text-[#9aa79f] disabled:no-underline"
+                  >
+                    {lastRates[form.transactionType]
+                      ? `ယခင် Rate ကိုသုံးမည် (${formatNumber(Number(lastRates[form.transactionType]))})`
+                      : "ယခင် Rate မရှိသေးပါ"}
+                  </button>
                 </div>
                 <div className="flex items-center justify-between rounded-xl border border-[#dcebe0] bg-[#f4faf5] px-4 py-3">
                   <div>
@@ -218,52 +297,88 @@ export default function NewEntry() {
                   <CheckCircle2 className="h-6 w-6 text-[#63a878]" />
                 </div>
               </div>
-              <section className="rounded-xl border border-[#e0e9e2] bg-[#fbfdfb] p-4">
-                <div className="mb-3">
-                  <p className="font-semibold text-[#25322b]">
-                    ငွေပေးချေမှု အခြေအနေ
-                  </p>
-                  <p className="mt-0.5 text-xs text-[#78867e]">
-                    အပြည့်ပေးချေပါက လက်ခံ/ပေးချေပြီးငွေကို လွတ်ထားနိုင်သည်။
-                    အကြွေးရှိလျှင် အမှန်တကယ်လက်ခံ/ပေးချေပြီးငွေကို ထည့်ပါ။
-                  </p>
+              <div className="rounded-xl border border-[#dcebe0] bg-[#f4faf5] p-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <p className="text-xs text-[#68756d]">
+                      စာရင်းသွင်းပြီးနောက် ခန့်မှန်းရွှေလက်ကျန်
+                    </p>
+                    <p
+                      className={`mt-1 text-lg font-bold ${stockAfterEntry < 0 ? "text-[#b84b3e]" : "text-[#1f5e3a]"}`}
+                    >
+                      {formatWeight(stockAfterEntry)}
+                    </p>
+                  </div>
+                  <span className="text-xs text-[#78867e]">
+                    {dailyQuery.isLoading
+                      ? "လက်ကျန်တွက်နေပါသည်…"
+                      : "ဝယ်/ရောင်းထည့်ပြီးနောက်"}
+                  </span>
                 </div>
-                <div className="grid gap-4 sm:grid-cols-3">
-                  <div className="space-y-1.5">
-                    <Label>ငွေလက်ခံ/ပေးချေနည်း</Label>
-                    <select
-                      value={form.paymentMethod}
-                      onChange={e => update("paymentMethod", e.target.value)}
-                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                    >
-                      <option value="cash">ငွေသား</option>
-                      <option value="bank">ဘဏ်</option>
-                      <option value="kbzpay">KBZPay</option>
-                      <option value="wavepay">Wave Money</option>
-                      <option value="other">အခြား</option>
-                    </select>
+                {stockAfterEntry < 0 && (
+                  <p className="mt-2 text-xs font-semibold text-[#b84b3e]">
+                    သတိ: ဤရောင်းစာရင်းပြီးနောက် ရွှေလက်ကျန် အနုတ်ဖြစ်နေပါသည်။
+                  </p>
+                )}
+              </div>
+              <section className="rounded-xl border border-[#e0e9e2] bg-[#fbfdfb] p-4">
+                <button
+                  type="button"
+                  onClick={() => setShowPayment(value => !value)}
+                  className="flex w-full items-center justify-between gap-3 text-left"
+                >
+                  <div>
+                    <p className="font-semibold text-[#25322b]">
+                      ငွေပေးချေမှု အခြေအနေ
+                    </p>
+                    <p className="mt-0.5 text-xs text-[#78867e]">
+                      {showPayment
+                        ? "အကြွေး သို့မဟုတ် တစ်စိတ်တစ်ပိုင်းပေးချေမှုကို ထည့်ပါ။"
+                        : "အပြည့်ပေးချေထားသည်ဟု သတ်မှတ်ထားပါသည်။ အကြွေးရှိမှ ဖွင့်ပါ။"}
+                    </p>
                   </div>
-                  <div className="space-y-1.5">
-                    <Label>လက်ခံ/ပေးချေပြီးငွေ</Label>
-                    <Input
-                      type="number"
-                      min="0"
-                      max={calculatedAmount}
-                      placeholder={formatNumber(calculatedAmount)}
-                      value={form.paidAmount}
-                      onChange={e => update("paidAmount", e.target.value)}
-                    />
-                  </div>
-                  <div className="flex items-end">
-                    <div
-                      className={`w-full rounded-lg px-3 py-2.5 text-sm font-semibold ${isCredit ? "bg-[#fff4e8] text-[#a15f13]" : "bg-[#e8f5eb] text-[#2c6e49]"}`}
-                    >
-                      {isCredit
-                        ? `အကြွေးကျန် ${formatNumber(calculatedAmount - paidAmount)} ကျပ်`
-                        : "အပြည့်ပေးချေပြီး"}
+                  <span className="whitespace-nowrap text-sm font-semibold text-[#2c6e49]">
+                    {showPayment ? "ဖျောက်မည်" : "အကြွေးထည့်မည်"}
+                  </span>
+                </button>
+                {showPayment && (
+                  <div className="mt-3 grid gap-4 sm:grid-cols-3">
+                    <div className="space-y-1.5">
+                      <Label>ငွေလက်ခံ/ပေးချေနည်း</Label>
+                      <select
+                        value={form.paymentMethod}
+                        onChange={e => update("paymentMethod", e.target.value)}
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      >
+                        <option value="cash">ငွေသား</option>
+                        <option value="bank">ဘဏ်</option>
+                        <option value="kbzpay">KBZPay</option>
+                        <option value="wavepay">Wave Money</option>
+                        <option value="other">အခြား</option>
+                      </select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>လက်ခံ/ပေးချေပြီးငွေ</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        max={calculatedAmount}
+                        placeholder={formatNumber(calculatedAmount)}
+                        value={form.paidAmount}
+                        onChange={e => update("paidAmount", e.target.value)}
+                      />
+                    </div>
+                    <div className="flex items-end">
+                      <div
+                        className={`w-full rounded-lg px-3 py-2.5 text-sm font-semibold ${isCredit ? "bg-[#fff4e8] text-[#a15f13]" : "bg-[#e8f5eb] text-[#2c6e49]"}`}
+                      >
+                        {isCredit
+                          ? `အကြွေးကျန် ${formatNumber(calculatedAmount - paidAmount)} ကျပ်`
+                          : "အပြည့်ပေးချေပြီး"}
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
               </section>
               <div className="border-t border-[#edf1ee] pt-4">
                 <button
@@ -316,17 +431,20 @@ function WeightInput({
   value,
   onChange,
   step = "1",
+  max,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   step?: string;
+  max?: string;
 }) {
   return (
     <div className="relative">
       <Input
         type="number"
         min="0"
+        max={max}
         step={step}
         placeholder="0"
         value={value}

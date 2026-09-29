@@ -865,6 +865,8 @@ export async function getShopDailyOverview(date: string) {
   return {
     date,
     opening,
+    openingSource: previous ? "previous_closing" : "manual",
+    previousClosingDate: previous?.closingDate ?? null,
     closing,
     sales: goldSummary.sellAmount,
     purchases: goldSummary.buyAmount,
@@ -899,21 +901,54 @@ export async function getShopDailyOverview(date: string) {
 export async function saveShopDailyClosing(input: InsertShopDailyClosing) {
   const db = await getDb();
   if (!db) throw new Error("Database is not available");
+  const overview = await getShopDailyOverview(input.closingDate);
+  const opening =
+    overview.openingSource === "manual" && !overview.isClosed
+      ? {
+          cash: Number(input.openingCash),
+          goldKyat: Number(input.openingGoldKyat),
+          goldPae: Number(input.openingGoldPae),
+          goldYway: Number(input.openingGoldYway),
+          goldValue: Number(input.openingGoldValue),
+        }
+      : overview.opening;
+  const openingGold = {
+    kyat: opening.goldKyat,
+    pae: opening.goldPae,
+    yway: opening.goldYway,
+  };
+  const calculatedStock = calculateStockBalance({
+    opening: openingGold,
+    boughtWeight: overview.boughtWeight,
+    soldWeight: overview.soldWeight,
+  });
+  const calculatedClosing = calculatedStock.expectedClosing;
   const weightNumbers = [
-    input.openingGoldKyat,
-    input.openingGoldPae,
-    input.openingGoldYway,
-    input.closingGoldKyat,
-    input.closingGoldPae,
-    input.closingGoldYway,
+    opening.goldKyat,
+    opening.goldPae,
+    opening.goldYway,
+    calculatedClosing.kyat,
+    calculatedClosing.pae,
+    calculatedClosing.yway,
   ];
   if (weightNumbers.some(value => Number(value) < 0))
     throw new Error("Gold weight cannot be negative");
   if (Number(input.openingCash) < 0 || Number(input.closingGoldRate) < 0)
     throw new Error("Opening cash and gold rate cannot be negative");
+  const values = {
+    ...input,
+    openingCash: opening.cash,
+    openingGoldKyat: opening.goldKyat,
+    openingGoldPae: opening.goldPae,
+    openingGoldYway: opening.goldYway,
+    openingGoldValue: opening.goldValue,
+    closingGoldKyat: calculatedClosing.kyat,
+    closingGoldPae: calculatedClosing.pae,
+    closingGoldYway: calculatedClosing.yway,
+  };
   return db
     .insert(shopDailyClosings)
-    .values(input)
+    .values(values)
     .onDuplicateKeyUpdate({
       set: {
         openingCash: input.openingCash,
