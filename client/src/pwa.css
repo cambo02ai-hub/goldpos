@@ -1,0 +1,39 @@
+@media (display-mode: standalone) {
+  .mobile-app-login {
+    min-height: 100svh;
+  }
+
+  .mobile-app-header {
+    height: auto !important;
+    min-height: calc(3.5rem + env(safe-area-inset-top));
+    padding-top: calc(0.75rem + env(safe-area-inset-top));
+  }
+
+  .mobile-app-main {
+    padding-bottom: calc(0.5rem + env(safe-area-inset-bottom));
+  }
+
+  .ios-safe-footer {
+    padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));
+  }
+}
+
+@media screen and (max-width: 767px) {
+  .mobile-app-login {
+    min-height: 100svh;
+  }
+
+  input:is(
+    [type="text"],
+    [type="number"],
+    [type="password"],
+    [type="email"],
+    [type="tel"],
+    [type="search"],
+    [type="date"]
+  ),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
