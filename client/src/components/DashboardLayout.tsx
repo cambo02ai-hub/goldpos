@@ -33,7 +33,9 @@ import {
   LayoutDashboard,
   LogOut,
   PanelLeft,
+  Smartphone,
   Users,
+  X,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -110,7 +112,7 @@ function LocalLoginForm() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#f7f9f8] px-4">
+    <div className="mobile-app-login flex min-h-screen flex-col items-center justify-center gap-3 bg-[#f7f9f8] px-4">
       <form
         onSubmit={submit}
         className="w-full max-w-sm space-y-6 rounded-2xl border border-[#dfe8e2] bg-white p-7 shadow-sm"
@@ -166,6 +168,7 @@ function LocalLoginForm() {
           {loginMutation.isPending ? "ဝင်ရောက်နေပါသည်…" : "ဝင်ရောက်မည်"}
         </Button>
       </form>
+      <IOSInstallHint />
     </div>
   );
 }
@@ -297,7 +300,7 @@ function DashboardLayoutContent({
             </SidebarMenu>
           </SidebarContent>
 
-          <SidebarFooter className="p-3">
+          <SidebarFooter className="ios-safe-footer p-3">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button className="flex items-center gap-3 rounded-lg px-1 py-1 hover:bg-accent/50 transition-colors w-full text-left group-data-[collapsible=icon]:justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">
@@ -340,7 +343,7 @@ function DashboardLayoutContent({
 
       <SidebarInset>
         {isMobile && (
-          <div className="flex border-b h-14 items-center justify-between bg-background/95 px-2 backdrop-blur supports-[backdrop-filter]:backdrop-blur sticky top-0 z-40">
+          <div className="mobile-app-header flex border-b h-14 items-center justify-between bg-background/95 px-2 backdrop-blur supports-[backdrop-filter]:backdrop-blur sticky top-0 z-40">
             <div className="flex items-center gap-2">
               <SidebarTrigger className="h-9 w-9 rounded-lg bg-background" />
               <div className="flex items-center gap-3">
@@ -353,9 +356,70 @@ function DashboardLayoutContent({
             </div>
           </div>
         )}
-        <main className="flex-1 p-2 sm:p-3 md:p-4">{children}</main>
+        <main className="mobile-app-main flex-1 p-2 sm:p-3 md:p-4">
+          <IOSInstallHint />
+          {children}
+        </main>
       </SidebarInset>
     </>
+  );
+}
+
+function IOSInstallHint() {
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    try {
+      if (window.sessionStorage.getItem("goldpos-ios-install-hint-dismissed")) {
+        return;
+      }
+    } catch {
+      // Installation guidance can still be displayed if storage is unavailable.
+    }
+
+    const nav = window.navigator as Navigator & { standalone?: boolean };
+    const isIOS =
+      /iPhone|iPad|iPod/i.test(nav.userAgent) ||
+      (nav.platform === "MacIntel" && nav.maxTouchPoints > 1);
+    const isStandalone =
+      nav.standalone === true ||
+      window.matchMedia?.("(display-mode: standalone)").matches === true;
+    setVisible(isIOS && !isStandalone);
+  }, []);
+
+  const dismiss = () => {
+    setVisible(false);
+    try {
+      window.sessionStorage.setItem("goldpos-ios-install-hint-dismissed", "1");
+    } catch {
+      // The close button remains functional without session storage.
+    }
+  };
+
+  if (!visible) return null;
+
+  return (
+    <aside
+      className="mb-3 flex items-start gap-3 rounded-xl border border-[#d8e7db] bg-[#eef6ef] px-3 py-3 text-sm text-[#244832] sm:px-4"
+      role="note"
+    >
+      <Smartphone className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
+      <div className="min-w-0 flex-1">
+        <p className="font-semibold">iPhone / iPad မှာ app လို ထည့်သုံးရန်</p>
+        <p className="mt-1 text-xs leading-relaxed text-[#53645b]">
+          Safari ထဲက Share ခလုတ်ကိုနှိပ်ပြီး “Add to Home Screen” → “Add”
+          ကိုရွေးပါ။ အသုံးပြုရန် အင်တာနက်လိုအပ်ပါသည်။
+        </p>
+      </div>
+      <button
+        type="button"
+        onClick={dismiss}
+        className="-mr-1 -mt-1 rounded-md p-1 text-[#53645b] hover:bg-[#dfeee2]"
+        aria-label="Install ညွှန်ကြားချက် ပိတ်ရန်"
+      >
+        <X className="h-4 w-4" aria-hidden="true" />
+      </button>
+    </aside>
   );
 }
 
