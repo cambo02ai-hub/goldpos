@@ -105,6 +105,32 @@ function dateConditions(
   return conditions;
 }
 
+export async function upsertLocalAdmin(
+  username: string,
+  passwordHash: string
+): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database is not available");
+  await db
+    .insert(users)
+    .values({
+      openId: username,
+      name: username,
+      loginMethod: "local",
+      passwordHash,
+      role: "admin",
+      lastSignedIn: new Date(),
+    })
+    .onDuplicateKeyUpdate({
+      set: {
+        name: username,
+        loginMethod: "local",
+        passwordHash,
+        role: "admin",
+      },
+    });
+}
+
 export async function listGoldTransactions(
   filters?: DateFilters & { type?: "sell" | "buy" }
 ) {

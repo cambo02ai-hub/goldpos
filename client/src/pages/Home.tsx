@@ -46,7 +46,8 @@ function InvoiceDialog({ row, onClose }: { row: any; onClose: () => void }) {
     document.documentElement.style.setProperty("--slip-width", `${slipSize}mm`);
     const printStyle = document.createElement("style");
     printStyle.dataset.slipPrintSize = "true";
-    printStyle.textContent = `@media print { @page { size: ${slipSize}mm auto; margin: 0; } }`;
+    const printHeight = slipSize === "58" ? "140mm" : "160mm";
+    printStyle.textContent = `@media print { @page { size: ${slipSize}mm ${printHeight}; margin: 0; } }`;
     document.head.appendChild(printStyle);
     return () => {
       printStyle.remove();

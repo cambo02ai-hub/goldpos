@@ -1,3 +1,17 @@
+CREATE TABLE `cash_entries` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`entryDate` varchar(10) NOT NULL,
+	`entryType` enum('income','expense','capital','drawing') NOT NULL,
+	`category` varchar(100) NOT NULL,
+	`counterparty` varchar(255),
+	`amount` bigint NOT NULL,
+	`paymentMethod` enum('cash','bank','kbzpay','wavepay','other') NOT NULL DEFAULT 'cash',
+	`note` varchar(500),
+	`createdBy` int NOT NULL,
+	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	CONSTRAINT `cash_entries_id` PRIMARY KEY(`id`)
+);
+--> statement-breakpoint
 CREATE TABLE `hlaw_oo_entries` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`serviceDate` varchar(10) NOT NULL,
@@ -13,6 +27,19 @@ CREATE TABLE `hlaw_oo_entries` (
 	`createdBy` int NOT NULL,
 	`createdAt` timestamp NOT NULL DEFAULT (now()),
 	CONSTRAINT `hlaw_oo_entries_id` PRIMARY KEY(`id`)
+);
+--> statement-breakpoint
+CREATE TABLE `payment_settlements` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`transactionId` int NOT NULL,
+	`settlementDate` varchar(10) NOT NULL,
+	`settlementType` enum('collection','payment') NOT NULL,
+	`amount` bigint NOT NULL,
+	`paymentMethod` enum('cash','bank','kbzpay','wavepay','other') NOT NULL DEFAULT 'cash',
+	`note` varchar(500),
+	`createdBy` int NOT NULL,
+	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	CONSTRAINT `payment_settlements_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
 CREATE TABLE `shop_daily_closings` (
@@ -66,7 +93,9 @@ CREATE TABLE `staff_leave_entries` (
 	`createdAt` timestamp NOT NULL DEFAULT (now()),
 	CONSTRAINT `staff_leave_entries_id` PRIMARY KEY(`id`)
 );
-
+--> statement-breakpoint
+ALTER TABLE `gold_transactions` ADD `paymentMethod` enum('cash','bank','kbzpay','wavepay','other') DEFAULT 'cash' NOT NULL;--> statement-breakpoint
+ALTER TABLE `gold_transactions` ADD `paidAmount` bigint DEFAULT 0 NOT NULL;
 --> statement-breakpoint
 INSERT INTO `shop_journal_entries` (`entryDate`, `side`, `accountCode`, `details`, `kyat`, `pae`, `yway`, `rate`, `price`, `amount`, `sourceType`, `sourceId`, `createdBy`)
 SELECT `tradeDate`, CASE WHEN `transactionType` = 'sell' THEN 'debit' ELSE 'credit' END, CASE WHEN `transactionType` = 'sell' THEN '1001' ELSE '2001' END, CONCAT(CASE WHEN `transactionType` = 'sell' THEN 'အရောင်း · ' ELSE 'အဝယ် · ' END, `partyName`, IF(`itemName` IS NULL OR `itemName` = '', '', CONCAT(' · ', `itemName`))), `kyat`, `pae`, `yway`, `rate`, `amount`, `paidAmount`, 'gold_transaction', `id`, `createdBy`

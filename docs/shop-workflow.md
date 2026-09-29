@@ -4,13 +4,13 @@ The workbook contains six sheets. The implementation adds a **Shop Book** worksp
 
 ## Sheet-to-feature map
 
-| Workbook sheet | Observed workflow | Gold POS feature |
-|---|---|---|
-| `Gold` | Daily sell and buy rows, weight/rate/amount, opening stock carried into the day, daily totals and close/profit line | Existing POS sell/buy entries feed the new daily closing view. Opening/closing stock, opening value, close rate, actual counted cash, cash variance and an estimate are saved per date. |
-| `Dr` / `Cr` | Separate debit/credit event lists with date, detail, gold weight, rate, amount and account code | A coded journal. New paid sell/buy transactions, cash entries, debt settlements and HlawOo service fees post into this journal automatically; staff may add manual coded entries. |
-| `Bd` | Account-code descriptions and a running opening + debit − credit balance | Account-code selector uses the 1001–1009 and 2001–2013 codes found in the workbook. Daily cash/book movement is calculated from the coded journal and a saved opening balance. |
-| `HlawOo` | Customer/date, Hlaw weight, No.2 output, Tin weight, Kyoot yield and Hlaw Kha fee | HlawOo service ledger with calculated No.2 weight, calculated Kyoot, manual fee, and fee posting to debit code 1002. |
-| `Sheet1` | Employee roster and daily leave/absence marks with a monthly total | Monthly staff leave log with leave/absent/late/other, partial-day units, notes and employee totals. |
+| Workbook sheet | Observed workflow                                                                                                   | Gold POS feature                                                                                                                                                                        |
+| -------------- | ------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Gold`         | Daily sell and buy rows, weight/rate/amount, opening stock carried into the day, daily totals and close/profit line | Existing POS sell/buy entries feed the new daily closing view. Opening/closing stock, opening value, close rate, actual counted cash, cash variance and an estimate are saved per date. |
+| `Dr` / `Cr`    | Separate debit/credit event lists with date, detail, gold weight, rate, amount and account code                     | A coded journal. New paid sell/buy transactions, cash entries, debt settlements and HlawOo service fees post into this journal automatically; staff may add manual coded entries.       |
+| `Bd`           | Account-code descriptions and a running opening + debit − credit balance                                            | Account-code selector uses the 1001–1009 and 2001–2013 codes found in the workbook. Daily cash/book movement is calculated from the coded journal and a saved opening balance.          |
+| `HlawOo`       | Customer/date, Hlaw weight, No.2 output, Tin weight, Kyoot yield and Hlaw Kha fee                                   | HlawOo service ledger with calculated No.2 weight, calculated Kyoot, manual fee, and fee posting to debit code 1002.                                                                    |
+| `Sheet1`       | Employee roster and daily leave/absence marks with a monthly total                                                  | Monthly staff leave log with leave/absent/late/other, partial-day units, notes and employee totals.                                                                                     |
 
 ## Formula and operational assumptions
 
@@ -24,4 +24,4 @@ The workbook contains six sheets. The implementation adds a **Shop Book** worksp
 
 ## Deployment
 
-Apply the new Drizzle migration in the deployment environment (`drizzle/0003_shop_workflow.sql`) using the repository's normal database migration process (currently `pnpm db:push`). The migration creates the four workflow tables and backfills existing POS trades, cash entries and settlements into the shop journal.
+Apply the new Drizzle migration in the deployment environment (`drizzle/0003_financial_accounting_shop_workflow.sql`) using the repository's normal database migration process (currently `pnpm db:push`). The migration creates the accounting and workflow tables and backfills existing POS trades, cash entries and settlements into the shop journal.

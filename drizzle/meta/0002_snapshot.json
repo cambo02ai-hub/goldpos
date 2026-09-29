@@ -1,98 +1,9 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "031e17f9-1832-40ae-b4cd-cf97dbc3ef81",
+  "id": "59019092-4c33-4b9b-84cc-a6ca845f5059",
   "prevId": "ac899b2d-34f3-4fb1-8b8c-ba0237ed101b",
   "tables": {
-    "cash_entries": {
-      "name": "cash_entries",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "int",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": true
-        },
-        "entryDate": {
-          "name": "entryDate",
-          "type": "varchar(10)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "entryType": {
-          "name": "entryType",
-          "type": "enum('income','expense','capital','drawing')",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "category": {
-          "name": "category",
-          "type": "varchar(100)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "counterparty": {
-          "name": "counterparty",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "amount": {
-          "name": "amount",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "paymentMethod": {
-          "name": "paymentMethod",
-          "type": "enum('cash','bank','kbzpay','wavepay','other')",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "'cash'"
-        },
-        "note": {
-          "name": "note",
-          "type": "varchar(500)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "createdBy": {
-          "name": "createdBy",
-          "type": "int",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "createdAt": {
-          "name": "createdAt",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "(now())"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {},
-      "compositePrimaryKeys": {
-        "cash_entries_id": {
-          "name": "cash_entries_id",
-          "columns": [
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "checkConstraint": {}
-    },
     "gold_transactions": {
       "name": "gold_transactions",
       "columns": {
@@ -171,22 +82,6 @@
           "autoincrement": false,
           "default": 0
         },
-        "paymentMethod": {
-          "name": "paymentMethod",
-          "type": "enum('cash','bank','kbzpay','wavepay','other')",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "'cash'"
-        },
-        "paidAmount": {
-          "name": "paidAmount",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": 0
-        },
         "note": {
           "name": "note",
           "type": "varchar(500)",
@@ -215,88 +110,6 @@
       "compositePrimaryKeys": {
         "gold_transactions_id": {
           "name": "gold_transactions_id",
-          "columns": [
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "checkConstraint": {}
-    },
-    "payment_settlements": {
-      "name": "payment_settlements",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "int",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": true
-        },
-        "transactionId": {
-          "name": "transactionId",
-          "type": "int",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "settlementDate": {
-          "name": "settlementDate",
-          "type": "varchar(10)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "settlementType": {
-          "name": "settlementType",
-          "type": "enum('collection','payment')",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "amount": {
-          "name": "amount",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "paymentMethod": {
-          "name": "paymentMethod",
-          "type": "enum('cash','bank','kbzpay','wavepay','other')",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "'cash'"
-        },
-        "note": {
-          "name": "note",
-          "type": "varchar(500)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "createdBy": {
-          "name": "createdBy",
-          "type": "int",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "createdAt": {
-          "name": "createdAt",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "(now())"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {},
-      "compositePrimaryKeys": {
-        "payment_settlements_id": {
-          "name": "payment_settlements_id",
           "columns": [
             "id"
           ]
@@ -339,6 +152,13 @@
         "loginMethod": {
           "name": "loginMethod",
           "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "passwordHash": {
+          "name": "passwordHash",
+          "type": "varchar(255)",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false

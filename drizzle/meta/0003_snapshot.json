@@ -1,8 +1,8 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "e8370239-8663-4093-a924-69e511137477",
-  "prevId": "031e17f9-1832-40ae-b4cd-cf97dbc3ef81",
+  "id": "5095d6a9-90e6-4be7-bffe-577105418d25",
+  "prevId": "59019092-4c33-4b9b-84cc-a6ca845f5059",
   "tables": {
     "cash_entries": {
       "name": "cash_entries",
@@ -808,6 +808,13 @@
         "loginMethod": {
           "name": "loginMethod",
           "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "passwordHash": {
+          "name": "passwordHash",
+          "type": "varchar(255)",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false

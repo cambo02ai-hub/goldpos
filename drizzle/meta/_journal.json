@@ -19,15 +19,15 @@
     {
       "idx": 2,
       "version": "5",
-      "when": 1790618563210,
-      "tag": "0002_financial_accounting",
+      "when": 1790203192545,
+      "tag": "0002_overconfident_leper_queen",
       "breakpoints": true
     },
     {
       "idx": 3,
       "version": "5",
-      "when": 1790638953628,
-      "tag": "0003_shop_workflow",
+      "when": 1790641753858,
+      "tag": "0003_financial_accounting_shop_workflow",
       "breakpoints": true
     }
   ]
