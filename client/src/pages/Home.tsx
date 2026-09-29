@@ -14,10 +14,14 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { trpc } from "@/lib/trpc";
 import { hasEmployeePermission } from "@shared/permissions";
 import {
+  defaultSlipLengthMm,
+  normalizeSlipLengthMm,
+  type SlipSize,
+} from "@shared/receipt-print";
+import {
   ArrowDownLeft,
   ArrowUpRight,
   CircleDollarSign,
-  Eye,
   FileDown,
   Filter,
   Printer,
@@ -31,7 +35,33 @@ import { useEffect, useMemo, useState } from "react";
 
 type FilterType = "all" | "sell" | "buy";
 type ViewMode = "today" | "all";
-type SlipSize = "58" | "80";
+type SlipSettings = { size: SlipSize; lengthMm: string };
+
+function readStoredSlipLength(size: SlipSize) {
+  const defaultLength = defaultSlipLengthMm(size);
+  try {
+    const stored = window.localStorage.getItem(`gold-slip-length-${size}`);
+    return stored === null
+      ? String(defaultLength)
+      : String(normalizeSlipLengthMm(stored, size));
+  } catch {
+    return String(defaultLength);
+  }
+}
+
+function loadSlipSettings(): SlipSettings {
+  if (typeof window === "undefined") {
+    return { size: "58", lengthMm: String(defaultSlipLengthMm("58")) };
+  }
+  try {
+    const size: SlipSize =
+      window.localStorage.getItem("gold-slip-size") === "80" ? "80" : "58";
+    return { size, lengthMm: readStoredSlipLength(size) };
+  } catch {
+    return { size: "58", lengthMm: String(defaultSlipLengthMm("58")) };
+  }
+}
+
 const formatNumber = (value: number, maximumFractionDigits = 0) =>
   new Intl.NumberFormat("en-US", { maximumFractionDigits }).format(value || 0);
 const formatDate = (date: string) =>
@@ -384,27 +414,48 @@ function MobileTransaction({
 }
 
 function InvoiceDialog({ row, onClose }: { row: any; onClose: () => void }) {
-  const [slipSize, setSlipSize] = useState<SlipSize>(() =>
-    typeof window !== "undefined" &&
-    window.localStorage.getItem("gold-slip-size") === "80"
-      ? "80"
-      : "58"
+  const [slipSettings, setSlipSettings] =
+    useState<SlipSettings>(loadSlipSettings);
+  const printLengthMm = normalizeSlipLengthMm(
+    slipSettings.lengthMm,
+    slipSettings.size
   );
-  const [previewMode, setPreviewMode] = useState(true);
   useEffect(() => {
     if (!row) return;
-    window.localStorage.setItem("gold-slip-size", slipSize);
-    document.documentElement.style.setProperty("--slip-width", `${slipSize}mm`);
+    try {
+      window.localStorage.setItem("gold-slip-size", slipSettings.size);
+      const typedLength = Number(slipSettings.lengthMm);
+      if (
+        slipSettings.lengthMm.trim() !== "" &&
+        Number.isFinite(typedLength) &&
+        typedLength >= 80 &&
+        typedLength <= 300
+      ) {
+        window.localStorage.setItem(
+          `gold-slip-length-${slipSettings.size}`,
+          String(printLengthMm)
+        );
+      }
+    } catch {
+      // Printing still works when browser storage is unavailable.
+    }
+    document.documentElement.classList.add("printing-invoice");
+    document.body.classList.add("printing-invoice");
+    document.documentElement.style.setProperty(
+      "--slip-width",
+      `${slipSettings.size}mm`
+    );
     const printStyle = document.createElement("style");
     printStyle.dataset.slipPrintSize = "true";
-    const printHeight = slipSize === "58" ? "140mm" : "160mm";
-    printStyle.textContent = `@media print { @page { size: ${slipSize}mm ${printHeight}; margin: 0; } }`;
+    printStyle.textContent = `@media print { @page { size: ${slipSettings.size}mm ${printLengthMm}mm; margin: 0; } }`;
     document.head.appendChild(printStyle);
     return () => {
       printStyle.remove();
+      document.documentElement.classList.remove("printing-invoice");
+      document.body.classList.remove("printing-invoice");
       document.documentElement.style.removeProperty("--slip-width");
     };
-  }, [row, slipSize]);
+  }, [row, slipSettings.size, slipSettings.lengthMm, printLengthMm]);
   if (!row) return null;
   const typeLabel =
     row.transactionType === "sell" ? "အရောင်း ဘောင်ချာ" : "အဝယ် ဘောင်ချာ";
@@ -416,7 +467,7 @@ function InvoiceDialog({ row, onClose }: { row: any; onClose: () => void }) {
         Number(row.yway || 0) / 128) *
         Number(row.rate || 0)
     );
-  const paperWidth = slipSize === "58" ? "w-[58mm]" : "w-[80mm]";
+  const paperWidth = slipSettings.size === "58" ? "w-[58mm]" : "w-[80mm]";
   return (
     <Dialog open={Boolean(row)} onOpenChange={open => !open && onClose()}>
       <DialogContent className="max-w-[720px] overflow-hidden p-0">
@@ -427,48 +478,76 @@ function InvoiceDialog({ row, onClose }: { row: any; onClose: () => void }) {
                 ဘောင်ချာ ကြိုကြည့်ရန်
               </p>
               <p className="text-xs text-[#78867e]">
-                Print မထုတ်ခင် size နှင့် ပုံစံကို စစ်ဆေးပါ
+                စာရွက်အကျယ်နှင့် အရှည်ကို printer အလိုက် သတ်မှတ်နိုင်ပါသည်။
               </p>
             </div>
-            <div className="flex items-center gap-2">
-              <label
-                htmlFor="slip-size"
-                className="text-xs font-semibold text-[#53645b]"
-              >
-                စာရွက်အရွယ်
+            <div className="flex flex-wrap items-center gap-3">
+              <label className="flex items-center gap-2 text-xs font-semibold text-[#53645b]">
+                စာရွက်အကျယ်
+                <select
+                  id="slip-size"
+                  value={slipSettings.size}
+                  onChange={event => {
+                    const size = event.target.value as SlipSize;
+                    setSlipSettings({
+                      size,
+                      lengthMm: readStoredSlipLength(size),
+                    });
+                  }}
+                  className="h-9 rounded-md border border-[#dfe7e2] bg-white px-2 text-sm font-semibold text-[#25322b] outline-none focus:ring-2 focus:ring-[#6a9b7a]"
+                >
+                  <option value="58">58mm</option>
+                  <option value="80">80mm</option>
+                </select>
               </label>
-              <select
-                id="slip-size"
-                value={slipSize}
-                onChange={e => setSlipSize(e.target.value as SlipSize)}
-                className="h-9 rounded-md border border-[#dfe7e2] bg-white px-2 text-sm font-semibold text-[#25322b] outline-none focus:ring-2 focus:ring-[#6a9b7a]"
+              <label
+                htmlFor="slip-length"
+                className="flex items-center gap-2 text-xs font-semibold text-[#53645b]"
               >
-                <option value="58">58mm</option>
-                <option value="80">80mm</option>
-              </select>
-              <Button
-                type="button"
-                variant={previewMode ? "default" : "outline"}
-                size="sm"
-                onClick={() => setPreviewMode(true)}
-                className={
-                  previewMode
-                    ? "bg-[#276044] text-white hover:bg-[#1f5038]"
-                    : "border-[#dfe7e2] text-[#53645b]"
-                }
-              >
-                <Eye className="mr-1.5 h-4 w-4" />
-                Preview
-              </Button>
+                စာရွက်အရှည်
+                <Input
+                  id="slip-length"
+                  type="number"
+                  min={80}
+                  max={300}
+                  step={1}
+                  inputMode="numeric"
+                  aria-label="စာရွက်အရှည် မီလီမီတာ"
+                  className="h-9 w-20 bg-white px-2 text-sm"
+                  value={slipSettings.lengthMm}
+                  onChange={event =>
+                    setSlipSettings(previous => ({
+                      ...previous,
+                      lengthMm: event.target.value,
+                    }))
+                  }
+                  onBlur={() =>
+                    setSlipSettings(previous => ({
+                      ...previous,
+                      lengthMm: String(
+                        normalizeSlipLengthMm(previous.lengthMm, previous.size)
+                      ),
+                    }))
+                  }
+                />
+                mm
+              </label>
             </div>
           </div>
         </div>
-        <div className="max-h-[68vh] overflow-auto bg-[#edf2ee] p-4 sm:p-8">
+        <div className="invoice-preview-scroll max-h-[68vh] overflow-auto bg-[#edf2ee] p-4 sm:p-8">
           <div
             className={`invoice-preview-paper mx-auto ${paperWidth} max-w-full bg-white shadow-md`}
-            style={{ "--slip-width": `${slipSize}mm` } as React.CSSProperties}
+            style={
+              {
+                "--slip-width": `${slipSettings.size}mm`,
+              } as React.CSSProperties
+            }
           >
-            <div className="invoice-print-area" data-slip-size={slipSize}>
+            <div
+              className="invoice-print-area"
+              data-slip-size={slipSettings.size}
+            >
               <DialogHeader className="border-b border-[#e5ece7] bg-[#f7fbf8] px-4 py-4">
                 <div className="flex items-start justify-between gap-3">
                   <div>
@@ -520,7 +599,10 @@ function InvoiceDialog({ row, onClose }: { row: any; onClose: () => void }) {
         </div>
         <div className="flex items-center justify-between gap-2 border-t border-[#edf1ee] bg-white px-5 py-4 no-print">
           <div className="text-xs text-[#78867e]">
-            ရွေးထားသည်: <strong className="text-[#25322b]">{slipSize}mm</strong>
+            ရွေးထားသည်:{" "}
+            <strong className="text-[#25322b]">
+              {slipSettings.size}mm × {printLengthMm}mm
+            </strong>
           </div>
           <div className="flex gap-2">
             <Button variant="outline" onClick={onClose}>
