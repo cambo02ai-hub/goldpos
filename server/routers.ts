@@ -3,7 +3,12 @@ import { TRPCError } from "@trpc/server";
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
-import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
+import {
+  adminProcedure,
+  permissionProcedure,
+  publicProcedure,
+  router,
+} from "./_core/trpc";
 import {
   createCashEntry,
   createGoldTransaction,
@@ -18,6 +23,9 @@ import {
   listOutstandingTransactions,
   listUsers,
   updateUserRole,
+  listEmployees,
+  createEmployee,
+  updateEmployee,
   SHOP_ACCOUNTS,
   createShopJournalEntry,
   saveShopDailyClosing,
@@ -31,8 +39,12 @@ import {
   listHlawOoEntries,
   listStaffLeaveEntries,
 } from "./db";
-import { authenticateLocalUser } from "./localAuth";
+import { authenticateLocalUser, hashPassword } from "./localAuth";
 import { sdk } from "./_core/sdk";
+import {
+  EMPLOYEE_PERMISSION_LEVELS,
+  type EmployeePermissions,
+} from "@shared/permissions";
 
 const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const transactionSchema = z.object({
@@ -122,7 +134,33 @@ const staffLeaveSchema = z.object({
   note: z.string().trim().max(500).optional(),
 });
 
-const adminOnlyProcedure = protectedProcedure.use(({ ctx, next }) => {
+const employeePermissionsSchema = z.object({
+  ledger: z.enum(EMPLOYEE_PERMISSION_LEVELS),
+  finance: z.enum(EMPLOYEE_PERMISSION_LEVELS),
+  shopBook: z.enum(EMPLOYEE_PERMISSION_LEVELS),
+});
+const employeeCreateSchema = z.object({
+  username: z
+    .string()
+    .trim()
+    .min(3)
+    .max(64)
+    .regex(/^[A-Za-z0-9._@+-]+$/),
+  name: z.string().trim().min(2).max(255),
+  email: z.string().trim().email().max(320).nullable(),
+  password: z.string().min(10).max(200),
+  permissions: employeePermissionsSchema,
+});
+const employeeUpdateSchema = z.object({
+  id: z.number().int().positive(),
+  name: z.string().trim().min(2).max(255),
+  email: z.string().trim().email().max(320).nullable(),
+  permissions: employeePermissionsSchema,
+  isActive: z.boolean(),
+  password: z.string().min(10).max(200).optional(),
+});
+
+const adminOnlyProcedure = adminProcedure.use(({ ctx, next }) => {
   if (ctx.user.role !== "admin") {
     throw new TRPCError({
       code: "FORBIDDEN",
@@ -132,11 +170,20 @@ const adminOnlyProcedure = protectedProcedure.use(({ ctx, next }) => {
   return next({ ctx });
 });
 
+function isDuplicateKeyError(error: unknown) {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: string }).code === "ER_DUP_ENTRY"
+  );
+}
+
 export const appRouter = router({
   system: systemRouter,
   auth: router({
     me: publicProcedure.query(opts => {
-      if (!opts.ctx.user) return null;
+      if (!opts.ctx.user || opts.ctx.user.isActive === false) return null;
       const { passwordHash: _passwordHash, ...safeUser } = opts.ctx.user;
       return safeUser;
     }),
@@ -170,7 +217,7 @@ export const appRouter = router({
     }),
   }),
   ledger: router({
-    list: protectedProcedure
+    list: permissionProcedure("ledger", "view")
       .input(
         z
           .object({
@@ -181,10 +228,10 @@ export const appRouter = router({
           .optional()
       )
       .query(({ input }) => listGoldTransactions(input)),
-    summary: protectedProcedure
+    summary: permissionProcedure("ledger", "view")
       .input(dateRangeSchema)
       .query(({ input }) => getGoldSummary(input)),
-    create: protectedProcedure
+    create: permissionProcedure("ledger", "write")
       .input(transactionSchema)
       .mutation(({ input, ctx }) => {
         const weight = input.kyat + input.pae / 16 + input.yway / 128;
@@ -207,30 +254,32 @@ export const appRouter = router({
           createdBy: ctx.user.id,
         });
       }),
-    remove: adminOnlyProcedure
+    remove: permissionProcedure("ledger", "manage")
       .input(z.object({ id: z.number().int().positive() }))
       .mutation(({ input }) => deleteGoldTransaction(input.id)),
   }),
   finance: router({
-    summary: protectedProcedure
+    summary: permissionProcedure("finance", "view")
       .input(dateRangeSchema)
       .query(({ input }) => getFinancialSummary(input)),
-    cashBook: protectedProcedure
+    cashBook: permissionProcedure("finance", "view")
       .input(dateRangeSchema)
       .query(({ input }) => getCashBook(input)),
-    entries: protectedProcedure
+    entries: permissionProcedure("finance", "view")
       .input(dateRangeSchema)
       .query(({ input }) => listCashEntries(input)),
-    createEntry: protectedProcedure
+    createEntry: permissionProcedure("finance", "write")
       .input(cashEntrySchema)
       .mutation(({ input, ctx }) =>
         createCashEntry({ ...input, createdBy: ctx.user.id })
       ),
-    removeEntry: adminOnlyProcedure
+    removeEntry: permissionProcedure("finance", "manage")
       .input(z.object({ id: z.number().int().positive() }))
       .mutation(({ input }) => deleteCashEntry(input.id)),
-    outstanding: protectedProcedure.query(() => listOutstandingTransactions()),
-    settle: protectedProcedure
+    outstanding: permissionProcedure("finance", "view").query(() =>
+      listOutstandingTransactions()
+    ),
+    settle: permissionProcedure("finance", "write")
       .input(settlementSchema)
       .mutation(async ({ input, ctx }) => {
         try {
@@ -250,11 +299,13 @@ export const appRouter = router({
       }),
   }),
   shopBook: router({
-    accounts: protectedProcedure.query(() => SHOP_ACCOUNTS),
-    daily: protectedProcedure
+    accounts: permissionProcedure("shopBook", "view").query(
+      () => SHOP_ACCOUNTS
+    ),
+    daily: permissionProcedure("shopBook", "view")
       .input(z.object({ date: dateSchema }))
       .query(({ input }) => getShopDailyOverview(input.date)),
-    saveDaily: protectedProcedure
+    saveDaily: permissionProcedure("shopBook", "write")
       .input(dailyClosingSchema)
       .mutation(({ input, ctx }) =>
         saveShopDailyClosing({
@@ -264,7 +315,7 @@ export const appRouter = router({
           createdBy: ctx.user.id,
         })
       ),
-    journal: protectedProcedure
+    journal: permissionProcedure("shopBook", "view")
       .input(
         z
           .object({
@@ -275,7 +326,7 @@ export const appRouter = router({
           .optional()
       )
       .query(({ input }) => listShopJournalEntries(input)),
-    createJournal: protectedProcedure
+    createJournal: permissionProcedure("shopBook", "write")
       .input(shopJournalSchema)
       .mutation(({ input, ctx }) =>
         createShopJournalEntry({
@@ -285,33 +336,83 @@ export const appRouter = router({
           createdBy: ctx.user.id,
         })
       ),
-    removeJournal: adminOnlyProcedure
+    removeJournal: permissionProcedure("shopBook", "manage")
       .input(z.object({ id: z.number().int().positive() }))
       .mutation(({ input }) => deleteShopJournalEntry(input.id)),
-    hlawOo: protectedProcedure
+    hlawOo: permissionProcedure("shopBook", "view")
       .input(dateRangeSchema)
       .query(({ input }) => listHlawOoEntries(input)),
-    createHlawOo: protectedProcedure
+    createHlawOo: permissionProcedure("shopBook", "write")
       .input(hlawOoSchema)
       .mutation(({ input, ctx }) =>
         createHlawOoEntry({ ...input, createdBy: ctx.user.id })
       ),
-    removeHlawOo: adminOnlyProcedure
+    removeHlawOo: permissionProcedure("shopBook", "manage")
       .input(z.object({ id: z.number().int().positive() }))
       .mutation(({ input }) => deleteHlawOoEntry(input.id)),
-    leaves: protectedProcedure
+    leaves: permissionProcedure("shopBook", "view")
       .input(dateRangeSchema)
       .query(({ input }) => listStaffLeaveEntries(input)),
-    createLeave: protectedProcedure
+    createLeave: permissionProcedure("shopBook", "write")
       .input(staffLeaveSchema)
       .mutation(({ input, ctx }) =>
         createStaffLeaveEntry({ ...input, createdBy: ctx.user.id })
       ),
-    removeLeave: adminOnlyProcedure
+    removeLeave: permissionProcedure("shopBook", "manage")
       .input(z.object({ id: z.number().int().positive() }))
       .mutation(({ input }) => deleteStaffLeaveEntry(input.id)),
   }),
   admin: router({
+    employees: adminOnlyProcedure.query(() => listEmployees()),
+    createEmployee: adminOnlyProcedure
+      .input(employeeCreateSchema)
+      .mutation(async ({ input }) => {
+        try {
+          await createEmployee({
+            username: input.username.toLowerCase(),
+            name: input.name,
+            email: input.email?.toLowerCase() ?? null,
+            passwordHash: hashPassword(input.password),
+            permissions: input.permissions as EmployeePermissions,
+          });
+          return { success: true } as const;
+        } catch (error) {
+          if (isDuplicateKeyError(error)) {
+            throw new TRPCError({
+              code: "CONFLICT",
+              message: "ဤ username ဖြင့် account ရှိပြီးသားဖြစ်ပါသည်",
+            });
+          }
+          throw error;
+        }
+      }),
+    updateEmployee: adminOnlyProcedure
+      .input(employeeUpdateSchema)
+      .mutation(async ({ input }) => {
+        try {
+          await updateEmployee(input.id, {
+            name: input.name,
+            email: input.email?.toLowerCase() ?? null,
+            permissions: input.permissions as EmployeePermissions,
+            isActive: input.isActive,
+            ...(input.password
+              ? { passwordHash: hashPassword(input.password) }
+              : {}),
+          });
+          return { success: true } as const;
+        } catch (error) {
+          if (
+            error instanceof Error &&
+            error.message === "Employee account not found"
+          ) {
+            throw new TRPCError({
+              code: "NOT_FOUND",
+              message: "Employee account မတွေ့ပါ",
+            });
+          }
+          throw error;
+        }
+      }),
     users: adminOnlyProcedure.query(() => listUsers()),
     setRole: adminOnlyProcedure
       .input(

@@ -15,6 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { trpc } from "@/lib/trpc";
+import { hasEmployeePermission } from "@shared/permissions";
 import {
   calculateNo2Weight,
   estimateDailyGoldProfit,
@@ -95,6 +96,8 @@ function Metric({
 
 export default function ShopWorkflow() {
   const { user } = useAuth();
+  const canWriteShopBook = hasEmployeePermission(user, "shopBook", "write");
+  const canManageShopBook = hasEmployeePermission(user, "shopBook", "manage");
   const utils = trpc.useUtils();
   const [date, setDate] = useState(today());
   const [from, setFrom] = useState(monthStart(today().slice(0, 7)));
@@ -310,6 +313,7 @@ export default function ShopWorkflow() {
 
   const submitDaily = (event: FormEvent) => {
     event.preventDefault();
+    if (!canWriteShopBook) return;
     closeMutation.mutate({
       closingDate: date,
       openingCash: inputNumber(closingForm.openingCash),
@@ -330,6 +334,7 @@ export default function ShopWorkflow() {
   };
   const submitJournal = (event: FormEvent) => {
     event.preventDefault();
+    if (!canWriteShopBook) return;
     if (!journalForm.details.trim())
       return toast.error("အကြောင်းအရာ ဖြည့်ပေးပါ");
     if (inputNumber(journalForm.amount) <= 0)
@@ -349,6 +354,7 @@ export default function ShopWorkflow() {
   };
   const submitHlaw = (event: FormEvent) => {
     event.preventDefault();
+    if (!canWriteShopBook) return;
     if (!hlawForm.customerName.trim()) return toast.error("အမည် ဖြည့်ပေးပါ");
     hlawMutation.mutate({
       serviceDate: hlawForm.serviceDate,
@@ -365,6 +371,7 @@ export default function ShopWorkflow() {
   };
   const submitLeave = (event: FormEvent) => {
     event.preventDefault();
+    if (!canWriteShopBook) return;
     if (!leaveForm.employeeName.trim())
       return toast.error("ဝန်ထမ်းအမည် ဖြည့်ပေးပါ");
     leaveMutation.mutate({
@@ -572,16 +579,18 @@ export default function ShopWorkflow() {
                         )}
                     </section>
                     <div className="flex flex-wrap items-center gap-3">
-                      <Button
-                        type="submit"
-                        disabled={closeMutation.isPending}
-                        className="bg-[#2c6e49] hover:bg-[#245a3c]"
-                      >
-                        <Check className="mr-2 h-4 w-4" />
-                        {daily?.isClosed
-                          ? "ပြင်ဆင်ပြီး ပိတ်စာရင်းသိမ်းရန်"
-                          : "နေ့စာရင်းပိတ်ရန်"}
-                      </Button>
+                      {canWriteShopBook && (
+                        <Button
+                          type="submit"
+                          disabled={closeMutation.isPending}
+                          className="bg-[#2c6e49] hover:bg-[#245a3c]"
+                        >
+                          <Check className="mr-2 h-4 w-4" />
+                          {daily?.isClosed
+                            ? "ပြင်ဆင်ပြီး ပိတ်စာရင်းသိမ်းရန်"
+                            : "နေ့စာရင်းပိတ်ရန်"}
+                        </Button>
+                      )}
                       <span className="text-xs text-[#89968d]">
                         အမြတ်က ခန့်မှန်းတန်ဖိုးဖြစ်ပြီး စတင်ရွှေတန်ဖိုးနှင့်
                         ပိတ်နှုန်းအပေါ် မူတည်သည်။
@@ -710,14 +719,16 @@ export default function ShopWorkflow() {
                     }
                   />
                   <div className="flex items-end">
-                    <Button
-                      type="submit"
-                      disabled={journalMutation.isPending}
-                      className="w-full bg-[#2c6e49] hover:bg-[#245a3c]"
-                    >
-                      <Plus className="mr-2 h-4 w-4" />
-                      စာရင်းထည့်ရန်
-                    </Button>
+                    {canWriteShopBook && (
+                      <Button
+                        type="submit"
+                        disabled={journalMutation.isPending}
+                        className="w-full bg-[#2c6e49] hover:bg-[#245a3c]"
+                      >
+                        <Plus className="mr-2 h-4 w-4" />
+                        စာရင်းထည့်ရန်
+                      </Button>
+                    )}
                   </div>
                 </form>
               </CardContent>
@@ -808,7 +819,7 @@ export default function ShopWorkflow() {
                             {formatNumber(Number(row.amount))}
                           </td>
                           <td className="px-4 py-3 text-right">
-                            {!row.sourceType && user?.role === "admin" && (
+                            {!row.sourceType && canManageShopBook && (
                               <Button
                                 variant="ghost"
                                 size="icon"
@@ -940,14 +951,16 @@ export default function ShopWorkflow() {
                     />
                   </label>
                   <div className="flex items-end">
-                    <Button
-                      type="submit"
-                      disabled={hlawMutation.isPending}
-                      className="w-full bg-[#2c6e49] hover:bg-[#245a3c]"
-                    >
-                      <Plus className="mr-2 h-4 w-4" />
-                      ဝန်ဆောင်မှုစာရင်းထည့်ရန်
-                    </Button>
+                    {canWriteShopBook && (
+                      <Button
+                        type="submit"
+                        disabled={hlawMutation.isPending}
+                        className="w-full bg-[#2c6e49] hover:bg-[#245a3c]"
+                      >
+                        <Plus className="mr-2 h-4 w-4" />
+                        ဝန်ဆောင်မှုစာရင်းထည့်ရန်
+                      </Button>
+                    )}
                   </div>
                 </form>
               </CardContent>
@@ -1008,7 +1021,7 @@ export default function ShopWorkflow() {
                             {formatNumber(Number(row.serviceFee))}
                           </td>
                           <td className="px-4 py-3 text-right">
-                            {user?.role === "admin" && (
+                            {canManageShopBook && (
                               <Button
                                 variant="ghost"
                                 size="icon"
@@ -1111,14 +1124,16 @@ export default function ShopWorkflow() {
                     onChange={v => setLeaveForm({ ...leaveForm, dayUnits: v })}
                   />
                   <div className="flex items-end">
-                    <Button
-                      type="submit"
-                      disabled={leaveMutation.isPending}
-                      className="w-full bg-[#2c6e49] hover:bg-[#245a3c]"
-                    >
-                      <Plus className="mr-2 h-4 w-4" />
-                      ခွင့်မှတ်တမ်းထည့်ရန်
-                    </Button>
+                    {canWriteShopBook && (
+                      <Button
+                        type="submit"
+                        disabled={leaveMutation.isPending}
+                        className="w-full bg-[#2c6e49] hover:bg-[#245a3c]"
+                      >
+                        <Plus className="mr-2 h-4 w-4" />
+                        ခွင့်မှတ်တမ်းထည့်ရန်
+                      </Button>
+                    )}
                   </div>
                   <label className="text-sm font-medium text-[#53645b] sm:col-span-2 lg:col-span-5">
                     မှတ်ချက်
@@ -1190,7 +1205,7 @@ export default function ShopWorkflow() {
                             ရက်
                           </td>
                           <td className="px-4 py-3 text-right">
-                            {user?.role === "admin" && (
+                            {canManageShopBook && (
                               <Button
                                 variant="ghost"
                                 size="icon"

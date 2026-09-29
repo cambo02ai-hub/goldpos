@@ -22,6 +22,11 @@ import {
 import { useIsMobile } from "@/hooks/useMobile";
 import { trpc } from "@/lib/trpc";
 import {
+  hasEmployeePermission,
+  type EmployeePermissionLevel,
+  type EmployeePermissionModule,
+} from "@shared/permissions";
+import {
   BookOpenCheck,
   CalendarCheck2,
   FilePlus2,
@@ -43,8 +48,13 @@ const MAX_WIDTH = 480;
 
 export default function DashboardLayout({
   children,
+  requiredPermission,
 }: {
   children: React.ReactNode;
+  requiredPermission?: {
+    module: EmployeePermissionModule;
+    level: Exclude<EmployeePermissionLevel, "none">;
+  };
 }) {
   const [sidebarWidth, setSidebarWidth] = useState(() => {
     const saved = localStorage.getItem(SIDEBAR_WIDTH_KEY);
@@ -62,6 +72,14 @@ export default function DashboardLayout({
 
   if (!user) return <LocalLoginForm />;
 
+  const pageDenied =
+    requiredPermission &&
+    !hasEmployeePermission(
+      user,
+      requiredPermission.module,
+      requiredPermission.level
+    );
+
   return (
     <SidebarProvider
       style={
@@ -71,7 +89,7 @@ export default function DashboardLayout({
       }
     >
       <DashboardLayoutContent setSidebarWidth={setSidebarWidth}>
-        {children}
+        {pageDenied ? <PermissionDenied /> : children}
       </DashboardLayoutContent>
     </SidebarProvider>
   );
@@ -165,10 +183,24 @@ function DashboardLayoutContent({
   const [location, setLocation] = useLocation();
   const { state, toggleSidebar } = useSidebar();
   const menuItems = [
-    { icon: LayoutDashboard, label: "နေ့စဉ်စာရင်း", path: "/" },
-    { icon: FilePlus2, label: "စာရင်းအသစ် ထည့်ရန်", path: "/new" },
-    { icon: BookOpenCheck, label: "ငွေစာရင်း / အစီရင်ခံစာ", path: "/finance" },
-    { icon: CalendarCheck2, label: "ဆိုင်စာရင်းအုပ်", path: "/shop-book" },
+    ...(hasEmployeePermission(user, "ledger", "view")
+      ? [{ icon: LayoutDashboard, label: "နေ့စဉ်စာရင်း", path: "/" }]
+      : []),
+    ...(hasEmployeePermission(user, "ledger", "write")
+      ? [{ icon: FilePlus2, label: "စာရင်းအသစ် ထည့်ရန်", path: "/new" }]
+      : []),
+    ...(hasEmployeePermission(user, "finance", "view")
+      ? [
+          {
+            icon: BookOpenCheck,
+            label: "ငွေစာရင်း / အစီရင်ခံစာ",
+            path: "/finance",
+          },
+        ]
+      : []),
+    ...(hasEmployeePermission(user, "shopBook", "view")
+      ? [{ icon: CalendarCheck2, label: "ဆိုင်စာရင်းအုပ်", path: "/shop-book" }]
+      : []),
     ...(user?.role === "admin"
       ? [{ icon: Users, label: "Admin Dashboard", path: "/admin" }]
       : []),
@@ -279,7 +311,7 @@ function DashboardLayoutContent({
                       {user?.name || "-"}
                     </p>
                     <p className="text-xs text-muted-foreground truncate mt-1.5">
-                      {user?.email || "-"}
+                      {user?.email || user?.openId || "-"}
                     </p>
                   </div>
                 </button>
@@ -324,5 +356,18 @@ function DashboardLayoutContent({
         <main className="flex-1 p-2 sm:p-3 md:p-4">{children}</main>
       </SidebarInset>
     </>
+  );
+}
+
+function PermissionDenied() {
+  return (
+    <div className="flex min-h-[60vh] items-center justify-center p-6">
+      <div className="max-w-md rounded-2xl border border-[#e1e9e4] bg-white p-8 text-center shadow-sm">
+        <h1 className="text-xl font-semibold">ဝင်ရောက်ခွင့် မရှိပါ</h1>
+        <p className="mt-2 text-sm text-[#78867e]">
+          ဤစာမျက်နှာကို အသုံးပြုရန် Admin ထံမှ သက်ဆိုင်ရာ permission တောင်းခံပါ။
+        </p>
+      </div>
+    </div>
   );
 }

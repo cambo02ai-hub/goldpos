@@ -15,22 +15,30 @@ function Router() {
   return (
     <Switch>
       <Route path="/">
-        <DashboardLayout>
+        <DashboardLayout
+          requiredPermission={{ module: "ledger", level: "view" }}
+        >
           <Home />
         </DashboardLayout>
       </Route>
       <Route path="/new">
-        <DashboardLayout>
+        <DashboardLayout
+          requiredPermission={{ module: "ledger", level: "write" }}
+        >
           <NewEntry />
         </DashboardLayout>
       </Route>
       <Route path="/finance">
-        <DashboardLayout>
+        <DashboardLayout
+          requiredPermission={{ module: "finance", level: "view" }}
+        >
           <Finance />
         </DashboardLayout>
       </Route>
       <Route path="/shop-book">
-        <DashboardLayout>
+        <DashboardLayout
+          requiredPermission={{ module: "shopBook", level: "view" }}
+        >
           <ShopWorkflow />
         </DashboardLayout>
       </Route>
