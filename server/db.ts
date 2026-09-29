@@ -865,6 +865,8 @@ export async function getShopDailyOverview(date: string) {
   return {
     date,
     opening,
+    openingSource: previous ? "previous_closing" : "manual",
+    previousClosingDate: previous?.closingDate ?? null,
     closing,
     sales: goldSummary.sellAmount,
     purchases: goldSummary.buyAmount,
