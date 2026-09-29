@@ -19,6 +19,7 @@ import {
   users,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
+import type { EmployeePermissions } from "../shared/permissions";
 import {
   calculateHlawKyoot,
   calculateNo2Weight,
@@ -118,6 +119,7 @@ export async function upsertLocalAdmin(
       name: username,
       loginMethod: "local",
       passwordHash,
+      isActive: true,
       role: "admin",
       lastSignedIn: new Date(),
     })
@@ -126,6 +128,7 @@ export async function upsertLocalAdmin(
         name: username,
         loginMethod: "local",
         passwordHash,
+        isActive: true,
         role: "admin",
       },
     });
@@ -599,6 +602,81 @@ export async function updateUserRole(id: number, role: "user" | "admin") {
   const db = await getDb();
   if (!db) throw new Error("Database is not available");
   return db.update(users).set({ role }).where(eq(users.id, id));
+}
+
+export async function listEmployees() {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select({
+      id: users.id,
+      username: users.openId,
+      name: users.name,
+      email: users.email,
+      permissions: users.permissions,
+      isActive: users.isActive,
+      lastSignedIn: users.lastSignedIn,
+      createdAt: users.createdAt,
+    })
+    .from(users)
+    .where(and(eq(users.loginMethod, "local"), eq(users.role, "user")))
+    .orderBy(desc(users.createdAt));
+}
+
+export async function createEmployee(input: {
+  username: string;
+  name: string;
+  email: string | null;
+  passwordHash: string;
+  permissions: EmployeePermissions;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database is not available");
+  return db.insert(users).values({
+    openId: input.username,
+    name: input.name,
+    email: input.email,
+    loginMethod: "local",
+    passwordHash: input.passwordHash,
+    permissions: input.permissions,
+    isActive: true,
+    role: "user",
+  });
+}
+
+export async function updateEmployee(
+  id: number,
+  input: {
+    name: string;
+    email: string | null;
+    permissions: EmployeePermissions;
+    isActive: boolean;
+    passwordHash?: string;
+  }
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Database is not available");
+  const [employee] = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(
+      and(
+        eq(users.id, id),
+        eq(users.loginMethod, "local"),
+        eq(users.role, "user")
+      )
+    )
+    .limit(1);
+  if (!employee) throw new Error("Employee account not found");
+
+  const values = {
+    name: input.name,
+    email: input.email,
+    permissions: input.permissions,
+    isActive: input.isActive,
+    ...(input.passwordHash ? { passwordHash: input.passwordHash } : {}),
+  };
+  return db.update(users).set(values).where(eq(users.id, id));
 }
 
 export const SHOP_ACCOUNTS = [

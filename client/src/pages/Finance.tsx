@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { trpc } from "@/lib/trpc";
+import { hasEmployeePermission } from "@shared/permissions";
 import {
   ArrowDownLeft,
   ArrowUpRight,
@@ -65,6 +66,8 @@ const entryLabels: Record<EntryType, string> = {
 
 export default function Finance() {
   const { user } = useAuth();
+  const canWriteFinance = hasEmployeePermission(user, "finance", "write");
+  const canManageFinance = hasEmployeePermission(user, "finance", "manage");
   const [rangeMode, setRangeMode] = useState<"month" | "today" | "all">(
     "month"
   );
@@ -240,14 +243,16 @@ export default function Finance() {
                   </CardTitle>
                   <p className="mt-1 text-xs text-[#78867e]">{rangeLabel}</p>
                 </div>
-                <Button
-                  size="sm"
-                  onClick={() => setEntryOpen(true)}
-                  className="bg-[#276044] text-white hover:bg-[#1f5038]"
-                >
-                  <Plus className="mr-1.5 h-4 w-4" />
-                  ဝင်/ထွက်စာရင်း
-                </Button>
+                {canWriteFinance && (
+                  <Button
+                    size="sm"
+                    onClick={() => setEntryOpen(true)}
+                    className="bg-[#276044] text-white hover:bg-[#1f5038]"
+                  >
+                    <Plus className="mr-1.5 h-4 w-4" />
+                    ဝင်/ထွက်စာရင်း
+                  </Button>
+                )}
               </div>
             </CardHeader>
             <CardContent className="p-0">
@@ -332,13 +337,13 @@ export default function Finance() {
                 title="ရရန်အကြွေး"
                 rows={receivables}
                 empty="လက်ခံရန်အကြွေး မရှိပါ"
-                onSettle={setSettlementRow}
+                onSettle={canWriteFinance ? setSettlementRow : undefined}
               />
               <DebtSection
                 title="ပေးရန်အကြွေး"
                 rows={payables}
                 empty="ပေးရန်အကြွေး မရှိပါ"
-                onSettle={setSettlementRow}
+                onSettle={canWriteFinance ? setSettlementRow : undefined}
               />
             </CardContent>
           </Card>
@@ -421,22 +426,21 @@ export default function Finance() {
                           {row.cashOut ? formatNumber(row.cashOut) : "—"}
                         </td>
                         <td className="px-4 py-3.5 text-right">
-                          {user?.role === "admin" &&
-                            row.id.startsWith("entry-") && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                aria-label="Delete cash entry"
-                                onClick={() =>
-                                  removeEntry.mutate({
-                                    id: Number(row.id.replace("entry-", "")),
-                                  })
-                                }
-                                className="h-8 w-8 text-[#b16d65] hover:bg-[#fff1ef] hover:text-[#9c3b30]"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            )}
+                          {canManageFinance && row.id.startsWith("entry-") && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              aria-label="Delete cash entry"
+                              onClick={() =>
+                                removeEntry.mutate({
+                                  id: Number(row.id.replace("entry-", "")),
+                                })
+                              }
+                              className="h-8 w-8 text-[#b16d65] hover:bg-[#fff1ef] hover:text-[#9c3b30]"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
                         </td>
                       </tr>
                     ))}
@@ -534,7 +538,7 @@ function DebtSection({
   title: string;
   rows: OutstandingTransaction[];
   empty: string;
-  onSettle: (row: OutstandingTransaction) => void;
+  onSettle?: (row: OutstandingTransaction) => void;
 }) {
   return (
     <div className="rounded-xl border border-[#e4ebe6]">
@@ -564,14 +568,16 @@ function DebtSection({
                   ကျန် {formatNumber(row.outstandingAmount)} ကျပ်
                 </p>
               </div>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => onSettle(row)}
-                className="shrink-0 border-[#dfe7e2] text-[#2c6e49]"
-              >
-                ရှင်းမည်
-              </Button>
+              {onSettle && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => onSettle(row)}
+                  className="shrink-0 border-[#dfe7e2] text-[#2c6e49]"
+                >
+                  ရှင်းမည်
+                </Button>
+              )}
             </div>
           ))}
         </div>
