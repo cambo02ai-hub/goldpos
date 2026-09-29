@@ -621,24 +621,32 @@ export default function ShopWorkflow() {
                       <h3 className="mb-3 text-sm font-bold text-[#2c6e49]">
                         ပိတ်လက်ကျန်နှင့် ငွေစစ်ဆေးခြင်း
                       </h3>
+                      <div className="mb-3 rounded-lg border border-[#cfe3d4] bg-[#f1f9f3] p-3 text-sm text-[#286442]">
+                        <b>ပိတ်ရွှေလက်ကျန်ကို ကိုယ်တိုင်ထည့်ရန် မလိုပါ။</b>
+                        ဝယ်/ရောင်းစာရင်းကို အခြေခံပြီး system က
+                        အလိုအလျောက်တွက်ကာ သိမ်းပါမည်။
+                      </div>
                       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
                         <NumberField
-                          label="ပိတ်ရွှေ ကျပ်သား"
+                          label="တွက်ချက်ထားသော ပိတ်ရွှေ ကျပ်သား"
                           value={closingForm.closingGoldKyat}
+                          disabled
                           onChange={v => updateClose("closingGoldKyat", v)}
                         />
                         <NumberField
-                          label="ပဲ"
+                          label="တွက်ချက်ထားသော ပဲ"
                           value={closingForm.closingGoldPae}
                           max="15"
                           step="1"
+                          disabled
                           onChange={v => updateClose("closingGoldPae", v)}
                         />
                         <NumberField
-                          label="ရွေး"
+                          label="တွက်ချက်ထားသော ရွေး"
                           value={closingForm.closingGoldYway}
                           max="127"
                           step="0.1"
+                          disabled
                           onChange={v => updateClose("closingGoldYway", v)}
                         />
                         <NumberField
@@ -687,8 +695,8 @@ export default function ShopWorkflow() {
                       >
                         <Check className="mr-2 h-4 w-4" />
                         {daily?.isClosed
-                          ? "ပြင်ဆင်ပြီး ပိတ်စာရင်းသိမ်းရန်"
-                          : "နေ့စာရင်းပိတ်ရန်"}
+                          ? "ပြန်တွက်ပြီး စာရင်းသိမ်းရန်"
+                          : "အလိုအလျောက်တွက်ပြီး စာရင်းပိတ်ရန်"}
                       </Button>
                       <span className="text-xs text-[#89968d]">
                         အမြတ်က ခန့်မှန်းတန်ဖိုးဖြစ်ပြီး စတင်ရွှေတန်ဖိုးနှင့်
