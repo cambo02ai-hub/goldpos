@@ -9,7 +9,10 @@ export function hashPassword(password: string): string {
   return `${SCRYPT_PREFIX}$${salt.toString("base64url")}$${key.toString("base64url")}`;
 }
 
-export function verifyPassword(password: string, encoded: string | null | undefined): boolean {
+export function verifyPassword(
+  password: string,
+  encoded: string | null | undefined
+): boolean {
   if (!encoded) return false;
   const [prefix, saltText, keyText] = encoded.split("$");
   if (prefix !== SCRYPT_PREFIX || !saltText || !keyText) return false;
@@ -17,7 +20,10 @@ export function verifyPassword(password: string, encoded: string | null | undefi
     const salt = Buffer.from(saltText, "base64url");
     const expected = Buffer.from(keyText, "base64url");
     const actual = crypto.scryptSync(password, salt, expected.length);
-    return expected.length === actual.length && crypto.timingSafeEqual(expected, actual);
+    return (
+      expected.length === actual.length &&
+      crypto.timingSafeEqual(expected, actual)
+    );
   } catch {
     return false;
   }
@@ -36,8 +42,12 @@ export async function ensureLocalAdmin() {
   console.log(`[LocalAuth] Local admin ready: ${username}`);
 }
 
-export async function authenticateLocalUser(username: string, password: string) {
+export async function authenticateLocalUser(
+  username: string,
+  password: string
+) {
   const user = await getUserByOpenId(username.trim());
-  if (!user || user.loginMethod !== "local" || user.role !== "admin") return null;
+  if (!user || user.loginMethod !== "local" || user.role !== "admin")
+    return null;
   return verifyPassword(password, user.passwordHash) ? user : null;
 }

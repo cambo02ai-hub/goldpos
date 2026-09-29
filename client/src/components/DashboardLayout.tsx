@@ -21,10 +21,18 @@ import {
 } from "@/components/ui/sidebar";
 import { useIsMobile } from "@/hooks/useMobile";
 import { trpc } from "@/lib/trpc";
-import { FilePlus2, LayoutDashboard, LogOut, PanelLeft, Users } from "lucide-react";
+import {
+  BookOpenCheck,
+  CalendarCheck2,
+  FilePlus2,
+  LayoutDashboard,
+  LogOut,
+  PanelLeft,
+  Users,
+} from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
-import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
+import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 
@@ -49,7 +57,7 @@ export default function DashboardLayout({
   }, [sidebarWidth]);
 
   if (loading) {
-    return <DashboardLayoutSkeleton />
+    return <DashboardLayoutSkeleton />;
   }
 
   if (!user) return <LocalLoginForm />;
@@ -74,7 +82,9 @@ function LocalLoginForm() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const loginMutation = trpc.auth.login.useMutation({
-    onSuccess: async () => { await utils.auth.me.invalidate(); },
+    onSuccess: async () => {
+      await utils.auth.me.invalidate();
+    },
   });
   const submit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -83,18 +93,60 @@ function LocalLoginForm() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-[#f7f9f8] px-4">
-      <form onSubmit={submit} className="w-full max-w-sm space-y-6 rounded-2xl border border-[#dfe8e2] bg-white p-7 shadow-sm">
+      <form
+        onSubmit={submit}
+        className="w-full max-w-sm space-y-6 rounded-2xl border border-[#dfe8e2] bg-white p-7 shadow-sm"
+      >
         <div className="space-y-2 text-center">
-          <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#a06c18]">Ratanar Maung Gold House</p>
-          <h1 className="text-2xl font-bold tracking-tight text-[#17201d]">ဝင်ရောက်ရန်</h1>
-          <p className="text-sm text-[#68756d]">GoldPOS စနစ်ကို အသုံးပြုရန် သင့်အကောင့်ဖြင့် ဝင်ရောက်ပါ။</p>
+          <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#a06c18]">
+            Ratanar Maung Gold House
+          </p>
+          <h1 className="text-2xl font-bold tracking-tight text-[#17201d]">
+            ဝင်ရောက်ရန်
+          </h1>
+          <p className="text-sm text-[#68756d]">
+            GoldPOS စနစ်ကို အသုံးပြုရန် သင့်အကောင့်ဖြင့် ဝင်ရောက်ပါ။
+          </p>
         </div>
         <div className="space-y-4">
-          <div className="space-y-2"><label htmlFor="username" className="text-sm font-medium">Username</label><Input id="username" autoComplete="username" value={username} onChange={(event) => setUsername(event.target.value)} required /></div>
-          <div className="space-y-2"><label htmlFor="password" className="text-sm font-medium">Password</label><Input id="password" type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} required /></div>
+          <div className="space-y-2">
+            <label htmlFor="username" className="text-sm font-medium">
+              Username
+            </label>
+            <Input
+              id="username"
+              autoComplete="username"
+              value={username}
+              onChange={event => setUsername(event.target.value)}
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <label htmlFor="password" className="text-sm font-medium">
+              Password
+            </label>
+            <Input
+              id="password"
+              type="password"
+              autoComplete="current-password"
+              value={password}
+              onChange={event => setPassword(event.target.value)}
+              required
+            />
+          </div>
         </div>
-        {loginMutation.error && <p className="text-sm text-red-600">Username သို့မဟုတ် password မှားယွင်းနေပါသည်။</p>}
-        <Button type="submit" disabled={loginMutation.isPending} className="w-full bg-[#276044] text-white hover:bg-[#1f5038]">{loginMutation.isPending ? "ဝင်ရောက်နေပါသည်…" : "ဝင်ရောက်မည်"}</Button>
+        {loginMutation.error && (
+          <p className="text-sm text-red-600">
+            Username သို့မဟုတ် password မှားယွင်းနေပါသည်။
+          </p>
+        )}
+        <Button
+          type="submit"
+          disabled={loginMutation.isPending}
+          className="w-full bg-[#276044] text-white hover:bg-[#1f5038]"
+        >
+          {loginMutation.isPending ? "ဝင်ရောက်နေပါသည်…" : "ဝင်ရောက်မည်"}
+        </Button>
       </form>
     </div>
   );
@@ -115,7 +167,11 @@ function DashboardLayoutContent({
   const menuItems = [
     { icon: LayoutDashboard, label: "နေ့စဉ်စာရင်း", path: "/" },
     { icon: FilePlus2, label: "စာရင်းအသစ် ထည့်ရန်", path: "/new" },
-    ...(user?.role === "admin" ? [{ icon: Users, label: "Admin Dashboard", path: "/admin" }] : []),
+    { icon: BookOpenCheck, label: "ငွေစာရင်း / အစီရင်ခံစာ", path: "/finance" },
+    { icon: CalendarCheck2, label: "ဆိုင်စာရင်းအုပ်", path: "/shop-book" },
+    ...(user?.role === "admin"
+      ? [{ icon: Users, label: "Admin Dashboard", path: "/admin" }]
+      : []),
   ];
   const isCollapsed = state === "collapsed";
   const [isResizing, setIsResizing] = useState(false);
@@ -178,8 +234,8 @@ function DashboardLayoutContent({
               </button>
               {!isCollapsed ? (
                 <div className="flex items-center gap-2 min-w-0">
-                    <span className="font-semibold tracking-tight truncate">
-                      ရွှေစာရင်း
+                  <span className="font-semibold tracking-tight truncate">
+                    ရွှေစာရင်း
                   </span>
                 </div>
               ) : null}
