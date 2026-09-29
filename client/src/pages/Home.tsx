@@ -1,19 +1,42 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { trpc } from "@/lib/trpc";
-import { ArrowDownLeft, ArrowUpRight, CircleDollarSign, Eye, FileDown, Filter, Printer, ReceiptText, RefreshCcw, Search, Scale, Trash2 } from "lucide-react";
+import {
+  ArrowDownLeft,
+  ArrowUpRight,
+  Eye,
+  FileDown,
+  Filter,
+  Printer,
+  ReceiptText,
+  RefreshCcw,
+  Search,
+  Trash2,
+} from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 type FilterType = "all" | "sell" | "buy";
 type ViewMode = "today" | "all";
 type SlipSize = "58" | "80";
-const formatNumber = (value: number, maximumFractionDigits = 0) => new Intl.NumberFormat("en-US", { maximumFractionDigits }).format(value || 0);
-const formatDate = (date: string) => new Date(`${date}T00:00:00`).toLocaleDateString("my-MM", { day: "numeric", month: "short", year: "numeric" });
+const formatNumber = (value: number, maximumFractionDigits = 0) =>
+  new Intl.NumberFormat("en-US", { maximumFractionDigits }).format(value || 0);
+const formatDate = (date: string) =>
+  new Date(`${date}T00:00:00`).toLocaleDateString("my-MM", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
 
 export default function Home() {
   const { user } = useAuth();
@@ -24,21 +47,374 @@ export default function Home() {
   const [viewMode, setViewMode] = useState<ViewMode>("today");
   const [todayDate] = useState(() => new Date().toISOString().slice(0, 10));
   const utils = trpc.useUtils();
-  const dashboardFilter = useMemo(() => viewMode === "today" ? { from: todayDate, to: todayDate } : undefined, [viewMode, todayDate]);
-  const listQuery = trpc.ledger.list.useQuery(dashboardFilter, { enabled: Boolean(user), refetchInterval: viewMode === "today" ? 30000 : false, refetchOnWindowFocus: true });
-  const summaryQuery = trpc.ledger.summary.useQuery(dashboardFilter, { enabled: Boolean(user), refetchInterval: viewMode === "today" ? 30000 : false, refetchOnWindowFocus: true });
-  const removeMutation = trpc.ledger.remove.useMutation({ onSuccess: () => { void utils.ledger.list.invalidate(); void utils.ledger.summary.invalidate(); } });
-  const rows = useMemo(() => { const query = search.trim().toLowerCase(); return (listQuery.data ?? []).filter((row) => { const haystack = `${row.partyName} ${row.itemName ?? ""} ${row.note ?? ""}`.toLowerCase(); return (!query || haystack.includes(query)) && (typeFilter === "all" || row.transactionType === typeFilter) && (!dateFilter || row.tradeDate === dateFilter); }); }, [listQuery.data, search, typeFilter, dateFilter]);
-  const summary = summaryQuery.data ?? { sellCount: 0, buyCount: 0, sellAmount: 0, buyAmount: 0, sellWeight: 0, buyWeight: 0 };
+  const dashboardFilter = useMemo(
+    () =>
+      viewMode === "today" ? { from: todayDate, to: todayDate } : undefined,
+    [viewMode, todayDate]
+  );
+  const listQuery = trpc.ledger.list.useQuery(dashboardFilter, {
+    enabled: Boolean(user),
+    refetchInterval: viewMode === "today" ? 30000 : false,
+    refetchOnWindowFocus: true,
+  });
+  const summaryQuery = trpc.ledger.summary.useQuery(dashboardFilter, {
+    enabled: Boolean(user),
+    refetchInterval: viewMode === "today" ? 30000 : false,
+    refetchOnWindowFocus: true,
+  });
+  const removeMutation = trpc.ledger.remove.useMutation({
+    onSuccess: () => {
+      void utils.ledger.list.invalidate();
+      void utils.ledger.summary.invalidate();
+    },
+  });
+  const rows = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    return (listQuery.data ?? []).filter(row => {
+      const haystack =
+        `${row.partyName} ${row.itemName ?? ""} ${row.note ?? ""}`.toLowerCase();
+      return (
+        (!query || haystack.includes(query)) &&
+        (typeFilter === "all" || row.transactionType === typeFilter) &&
+        (!dateFilter || row.tradeDate === dateFilter)
+      );
+    });
+  }, [listQuery.data, search, typeFilter, dateFilter]);
+  const summary = summaryQuery.data ?? {
+    sellCount: 0,
+    buyCount: 0,
+    sellAmount: 0,
+    buyAmount: 0,
+    sellWeight: 0,
+    buyWeight: 0,
+  };
   const viewLabel = viewMode === "today" ? "ယနေ့" : "အားလုံး";
 
-  return <div className="min-h-screen bg-[#f7f9f8] text-[#17201d] -m-2 p-3 sm:-m-4 sm:p-4 md:p-6"><div className="mx-auto max-w-[1360px] space-y-5"><header className="border-b border-[#e4ebe6] pb-4"><p className="mb-1 text-xs font-bold uppercase tracking-[0.16em] text-[#a06c18]">Ratanar Maung Gold House</p><h1 className="text-2xl font-bold tracking-tight sm:text-3xl">နေ့စဉ် ရွှေစာရင်း</h1><p className="mt-1 text-sm text-[#68756d]">{viewLabel} ရွှေစာရင်းကို အချိန်နှင့်တပြေးညီ ကြည့်ရှုနိုင်ပါသည်။ စာရင်းအသစ်ထည့်ရန် ဘေးဘက် Tab ကို အသုံးပြုပါ။</p></header><div className="flex flex-col gap-3 rounded-xl border border-[#dfe8e2] bg-white px-3 py-2.5 shadow-sm sm:flex-row sm:items-center sm:justify-between"><div className="flex items-center gap-2 text-sm font-semibold text-[#53645b]"><span className="h-2 w-2 rounded-full bg-[#53a76e]" />{viewLabel} စာရင်း</div><div className="flex items-center gap-3"><span className="hidden text-xs text-[#89968d] sm:inline-flex"><RefreshCcw className="mr-1.5 h-3.5 w-3.5" /> ၃၀ စက္ကန့်တိုင်း update</span><Tabs value={viewMode} onValueChange={(value) => setViewMode(value as ViewMode)}><TabsList className="h-9 bg-[#eef4ef]"><TabsTrigger value="today" className="h-7 px-3 text-xs">ယနေ့</TabsTrigger><TabsTrigger value="all" className="h-7 px-3 text-xs">အားလုံး</TabsTrigger></TabsList></Tabs></div></div><section className="grid grid-cols-2 gap-3 lg:grid-cols-4"><SummaryCard label="ရောင်း စုစုပေါင်း" value={`${formatNumber(summary.sellAmount)} ကျပ်`} detail={`${summary.sellCount} စာရင်း · ${formatNumber(summary.sellWeight, 2)} ကျပ်သား`} icon={<ArrowUpRight className="h-4 w-4" />} tone="orange" /><SummaryCard label="ဝယ် စုစုပေါင်း" value={`${formatNumber(summary.buyAmount)} ကျပ်`} detail={`${summary.buyCount} စာရင်း · ${formatNumber(summary.buyWeight, 2)} ကျပ်သား`} icon={<ArrowDownLeft className="h-4 w-4" />} tone="green" /><SummaryCard label="Net cash flow" value={`${formatNumber(summary.sellAmount - summary.buyAmount)} ကျပ်`} detail="ရောင်း − ဝယ်" icon={<CircleDollarSign className="h-4 w-4" />} tone="purple" /><SummaryCard label="Stock balance" value={`${formatNumber(summary.sellWeight - summary.buyWeight, 2)} ကျပ်သား`} detail="ရောင်း − ဝယ်" icon={<Scale className="h-4 w-4" />} tone="blue" /></section><Card className="rounded-2xl border-[#dfe8e2] shadow-sm"><CardHeader className="gap-3 border-b border-[#edf1ee] bg-white px-4 py-4 sm:px-6"><div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-xs font-bold uppercase tracking-[0.14em] text-[#2c6e49]">Transaction journal</p><CardTitle className="mt-1 text-xl">{viewLabel} စာရင်းများ <span className="ml-1 text-sm font-normal text-[#89968d]">({rows.length})</span></CardTitle></div><Button variant="outline" size="sm" onClick={() => window.print()} className="w-fit border-[#dfe7e2] text-[#53645b]"><FileDown className="mr-2 h-4 w-4" />Print / Export</Button></div><div className="grid gap-2 lg:grid-cols-[minmax(0,1fr)_160px_auto]"><div className="relative"><Search className="absolute left-3 top-2.5 h-4 w-4 text-[#9aa79f]" /><Input className="pl-9" placeholder="အမည်၊ ပစ္စည်း ရှာရန်" value={search} onChange={(e) => setSearch(e.target.value)} /></div><Input type="date" value={dateFilter} onChange={(e) => setDateFilter(e.target.value)} /><Tabs value={typeFilter} onValueChange={(value) => setTypeFilter(value as FilterType)}><TabsList className="w-full bg-[#eef4ef] lg:w-auto"><TabsTrigger value="all" className="flex-1 lg:flex-none">အားလုံး</TabsTrigger><TabsTrigger value="sell" className="flex-1 lg:flex-none">ရောင်း</TabsTrigger><TabsTrigger value="buy" className="flex-1 lg:flex-none">ဝယ်</TabsTrigger></TabsList></Tabs></div></CardHeader><CardContent className="p-0">{listQuery.isLoading ? <div className="px-5 py-12 text-center text-[#839087]">စာရင်းများ ဖတ်နေပါသည်…</div> : rows.length === 0 ? <div className="flex flex-col items-center gap-2 px-5 py-12 text-center text-[#839087]"><Filter className="h-5 w-5" />စာရင်းမတွေ့ပါ</div> : <><div className="hidden overflow-x-auto md:block"><table className="w-full min-w-[760px] text-sm"><thead className="bg-[#f8faf8] text-left text-xs uppercase tracking-wide text-[#748079]"><tr><th className="px-5 py-3">နေ့စွဲ</th><th className="px-3 py-3">အမျိုးအစား</th><th className="px-3 py-3">အမည် / ပစ္စည်း</th><th className="px-3 py-3 text-right">အလေးချိန်</th><th className="px-3 py-3 text-right">Rate</th><th className="px-3 py-3 text-right">Amount</th><th className="px-4 py-3" /></tr></thead><tbody className="divide-y divide-[#edf1ee]">{rows.map((row) => <TransactionRow key={row.id} row={row} userRole={user?.role} onRemove={(id) => removeMutation.mutate({ id })} onInvoice={setInvoiceRow} />)}</tbody></table></div><div className="divide-y divide-[#edf1ee] md:hidden">{rows.map((row) => <MobileTransaction key={row.id} row={row} userRole={user?.role} onRemove={(id) => removeMutation.mutate({ id })} onInvoice={setInvoiceRow} />)}</div></>}</CardContent></Card><InvoiceDialog row={invoiceRow} onClose={() => setInvoiceRow(null)} /></div></div>;
+  return (
+    <div className="min-h-screen bg-[#f7f9f8] text-[#17201d] -m-2 p-3 sm:-m-4 sm:p-4 md:p-6">
+      <div className="mx-auto max-w-[1360px] space-y-5">
+        <header className="border-b border-[#e4ebe6] pb-4">
+          <p className="mb-1 text-xs font-bold uppercase tracking-[0.16em] text-[#a06c18]">
+            Ratanar Maung Gold House
+          </p>
+          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
+            နေ့စဉ် ရွှေစာရင်း
+          </h1>
+          <p className="mt-1 text-sm text-[#68756d]">
+            {viewLabel} ရွှေစာရင်းကို အချိန်နှင့်တပြေးညီ ကြည့်ရှုနိုင်ပါသည်။
+            စာရင်းအသစ်ထည့်ရန် ဘေးဘက် Tab ကို အသုံးပြုပါ။
+          </p>
+        </header>
+        <div className="flex flex-col gap-3 rounded-xl border border-[#dfe8e2] bg-white px-3 py-2.5 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-2 text-sm font-semibold text-[#53645b]">
+            <span className="h-2 w-2 rounded-full bg-[#53a76e]" />
+            {viewLabel} စာရင်း
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="hidden text-xs text-[#89968d] sm:inline-flex">
+              <RefreshCcw className="mr-1.5 h-3.5 w-3.5" /> ၃၀ စက္ကန့်တိုင်း
+              update
+            </span>
+            <Tabs
+              value={viewMode}
+              onValueChange={value => setViewMode(value as ViewMode)}
+            >
+              <TabsList className="h-9 bg-[#eef4ef]">
+                <TabsTrigger value="today" className="h-7 px-3 text-xs">
+                  ယနေ့
+                </TabsTrigger>
+                <TabsTrigger value="all" className="h-7 px-3 text-xs">
+                  အားလုံး
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
+        </div>
+        <section className="grid grid-cols-2 gap-3">
+          <SummaryCard
+            label="ရောင်း စုစုပေါင်း"
+            value={`${formatNumber(summary.sellAmount)} ကျပ်`}
+            detail={`${summary.sellCount} စာရင်း · ${formatNumber(summary.sellWeight, 2)} ကျပ်သား`}
+            icon={<ArrowUpRight className="h-4 w-4" />}
+            tone="orange"
+          />
+          <SummaryCard
+            label="ဝယ် စုစုပေါင်း"
+            value={`${formatNumber(summary.buyAmount)} ကျပ်`}
+            detail={`${summary.buyCount} စာရင်း · ${formatNumber(summary.buyWeight, 2)} ကျပ်သား`}
+            icon={<ArrowDownLeft className="h-4 w-4" />}
+            tone="green"
+          />
+        </section>
+        <Card className="rounded-2xl border-[#dfe8e2] shadow-sm">
+          <CardHeader className="gap-3 border-b border-[#edf1ee] bg-white px-4 py-4 sm:px-6">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#2c6e49]">
+                  Transaction journal
+                </p>
+                <CardTitle className="mt-1 text-xl">
+                  {viewLabel} စာရင်းများ{" "}
+                  <span className="ml-1 text-sm font-normal text-[#89968d]">
+                    ({rows.length})
+                  </span>
+                </CardTitle>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => window.print()}
+                className="w-fit border-[#dfe7e2] text-[#53645b]"
+              >
+                <FileDown className="mr-2 h-4 w-4" />
+                Print / Export
+              </Button>
+            </div>
+            <div className="grid gap-2 lg:grid-cols-[minmax(0,1fr)_160px_auto]">
+              <div className="relative">
+                <Search className="absolute left-3 top-2.5 h-4 w-4 text-[#9aa79f]" />
+                <Input
+                  className="pl-9"
+                  placeholder="အမည်၊ ပစ္စည်း ရှာရန်"
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                />
+              </div>
+              <Input
+                type="date"
+                value={dateFilter}
+                onChange={e => setDateFilter(e.target.value)}
+              />
+              <Tabs
+                value={typeFilter}
+                onValueChange={value => setTypeFilter(value as FilterType)}
+              >
+                <TabsList className="w-full bg-[#eef4ef] lg:w-auto">
+                  <TabsTrigger value="all" className="flex-1 lg:flex-none">
+                    အားလုံး
+                  </TabsTrigger>
+                  <TabsTrigger value="sell" className="flex-1 lg:flex-none">
+                    ရောင်း
+                  </TabsTrigger>
+                  <TabsTrigger value="buy" className="flex-1 lg:flex-none">
+                    ဝယ်
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </div>
+          </CardHeader>
+          <CardContent className="p-0">
+            {listQuery.isLoading ? (
+              <div className="px-5 py-12 text-center text-[#839087]">
+                စာရင်းများ ဖတ်နေပါသည်…
+              </div>
+            ) : rows.length === 0 ? (
+              <div className="flex flex-col items-center gap-2 px-5 py-12 text-center text-[#839087]">
+                <Filter className="h-5 w-5" />
+                စာရင်းမတွေ့ပါ
+              </div>
+            ) : (
+              <div className="grid gap-4 p-4 lg:grid-cols-2">
+                <JournalColumn
+                  title="ဝယ်စာရင်း"
+                  type="buy"
+                  rows={rows}
+                  userRole={user?.role}
+                  onRemove={id => removeMutation.mutate({ id })}
+                  onInvoice={setInvoiceRow}
+                />
+                <JournalColumn
+                  title="ရောင်းစာရင်း"
+                  type="sell"
+                  rows={rows}
+                  userRole={user?.role}
+                  onRemove={id => removeMutation.mutate({ id })}
+                  onInvoice={setInvoiceRow}
+                />
+              </div>
+            )}
+          </CardContent>
+        </Card>
+        <InvoiceDialog row={invoiceRow} onClose={() => setInvoiceRow(null)} />
+      </div>
+    </div>
+  );
 }
-function TransactionRow({ row, userRole, onRemove, onInvoice }: { row: any; userRole?: string; onRemove: (id: number) => void; onInvoice: (row: any) => void }) { return <tr className="transition-colors hover:bg-[#fbfdfb]"><td className="whitespace-nowrap px-5 py-3.5 font-medium text-[#526159]">{formatDate(row.tradeDate)}</td><td className="px-3 py-3.5"><TypeBadge type={row.transactionType} /></td><td className="px-3 py-3.5"><p className="font-semibold text-[#25322b]">{row.partyName}</p><p className="mt-0.5 text-xs text-[#8b968f]">{row.itemName || row.note || "—"}</p></td><td className="px-3 py-3.5 text-right text-xs text-[#53645b]">{formatWeight(row)}</td><td className="px-3 py-3.5 text-right font-mono text-[#53645b]">{formatNumber(row.rate)}</td><td className="px-3 py-3.5 text-right font-mono font-semibold text-[#25322b]">{formatNumber(row.amount)}</td><td className="px-4 py-3.5 text-right"><Button variant="ghost" size="icon" aria-label="Preview and print invoice" title="Preview / Print" onClick={() => onInvoice(row)} className="h-8 w-8 text-[#2c6e49] hover:bg-[#eaf5ed]"><ReceiptText className="h-4 w-4" /></Button>{userRole === "admin" && <DeleteButton onClick={() => onRemove(row.id)} />}</td></tr>; }
-function MobileTransaction({ row, userRole, onRemove, onInvoice }: { row: any; userRole?: string; onRemove: (id: number) => void; onInvoice: (row: any) => void }) { return <div className="flex items-start justify-between gap-3 px-4 py-3.5"><div className="min-w-0"><div className="flex items-center gap-2"><TypeBadge type={row.transactionType} /><span className="text-xs text-[#89968d]">{formatDate(row.tradeDate)}</span></div><p className="mt-1 truncate font-semibold text-[#25322b]">{row.partyName}</p><p className="mt-0.5 text-xs text-[#7c8981]">{formatWeight(row)} · Rate {formatNumber(row.rate)}</p></div><div className="flex items-center gap-2"><p className="whitespace-nowrap text-sm font-bold text-[#25322b]">{formatNumber(row.amount)}</p><Button variant="ghost" size="icon" aria-label="Preview and print invoice" title="Preview / Print" onClick={() => onInvoice(row)} className="h-8 w-8 text-[#2c6e49] hover:bg-[#eaf5ed]"><ReceiptText className="h-4 w-4" /></Button>{userRole === "admin" && <DeleteButton onClick={() => onRemove(row.id)} />}</div></div>; }
+function JournalColumn({
+  title,
+  type,
+  rows,
+  userRole,
+  onRemove,
+  onInvoice,
+}: {
+  title: string;
+  type: "buy" | "sell";
+  rows: any[];
+  userRole?: string;
+  onRemove: (id: number) => void;
+  onInvoice: (row: any) => void;
+}) {
+  const columnRows = rows.filter(row => row.transactionType === type);
+  return (
+    <section className="overflow-hidden rounded-xl border border-[#e1e9e4] bg-white">
+      <header
+        className={`flex items-center justify-between border-b px-4 py-3 ${type === "buy" ? "border-[#dceee0] bg-[#f5fbf6]" : "border-[#f4e3cd] bg-[#fffaf3]"}`}
+      >
+        <div>
+          <h3 className="font-bold text-[#25322b]">{title}</h3>
+          <p className="text-xs text-[#839087]">{columnRows.length} စာရင်း</p>
+        </div>
+        <p className="font-semibold text-[#53645b]">
+          {formatNumber(
+            columnRows.reduce((sum, row) => sum + Number(row.amount || 0), 0)
+          )}{" "}
+          ကျပ်
+        </p>
+      </header>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[560px] text-sm">
+          <thead className="bg-[#fbfcfb] text-left text-xs text-[#748079]">
+            <tr>
+              <th className="px-4 py-3">နေ့စွဲ</th>
+              <th className="px-3 py-3">အမည် / ပစ္စည်း</th>
+              <th className="px-3 py-3 text-right">အလေးချိန်</th>
+              <th className="px-3 py-3 text-right">Rate</th>
+              <th className="px-3 py-3 text-right">Amount</th>
+              <th className="px-3 py-3" />
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[#edf1ee]">
+            {columnRows.map(row => (
+              <TransactionRow
+                key={row.id}
+                row={row}
+                userRole={userRole}
+                onRemove={onRemove}
+                onInvoice={onInvoice}
+              />
+            ))}
+            {columnRows.length === 0 && (
+              <tr>
+                <td
+                  colSpan={6}
+                  className="px-4 py-8 text-center text-sm text-[#89968d]"
+                >
+                  စာရင်းမရှိပါ
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+function TransactionRow({
+  row,
+  userRole,
+  onRemove,
+  onInvoice,
+}: {
+  row: any;
+  userRole?: string;
+  onRemove: (id: number) => void;
+  onInvoice: (row: any) => void;
+}) {
+  return (
+    <tr className="transition-colors hover:bg-[#fbfdfb]">
+      <td className="whitespace-nowrap px-5 py-3.5 font-medium text-[#526159]">
+        {formatDate(row.tradeDate)}
+      </td>
+      <td className="px-3 py-3.5">
+        <p className="font-semibold text-[#25322b]">{row.partyName}</p>
+        <p className="mt-0.5 text-xs text-[#8b968f]">
+          {row.itemName || row.note || "—"}
+        </p>
+      </td>
+      <td className="px-3 py-3.5 text-right text-xs text-[#53645b]">
+        {formatWeight(row)}
+      </td>
+      <td className="px-3 py-3.5 text-right font-mono text-[#53645b]">
+        {formatNumber(row.rate)}
+      </td>
+      <td className="px-3 py-3.5 text-right font-mono font-semibold text-[#25322b]">
+        {formatNumber(row.amount)}
+      </td>
+      <td className="px-4 py-3.5 text-right">
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="Preview and print invoice"
+          title="Preview / Print"
+          onClick={() => onInvoice(row)}
+          className="h-8 w-8 text-[#2c6e49] hover:bg-[#eaf5ed]"
+        >
+          <ReceiptText className="h-4 w-4" />
+        </Button>
+        {userRole === "admin" && (
+          <DeleteButton onClick={() => onRemove(row.id)} />
+        )}
+      </td>
+    </tr>
+  );
+}
+function MobileTransaction({
+  row,
+  userRole,
+  onRemove,
+  onInvoice,
+}: {
+  row: any;
+  userRole?: string;
+  onRemove: (id: number) => void;
+  onInvoice: (row: any) => void;
+}) {
+  return (
+    <div className="flex items-start justify-between gap-3 px-4 py-3.5">
+      <div className="min-w-0">
+        <div className="flex items-center gap-2">
+          <TypeBadge type={row.transactionType} />
+          <span className="text-xs text-[#89968d]">
+            {formatDate(row.tradeDate)}
+          </span>
+        </div>
+        <p className="mt-1 truncate font-semibold text-[#25322b]">
+          {row.partyName}
+        </p>
+        <p className="mt-0.5 text-xs text-[#7c8981]">
+          {formatWeight(row)} · Rate {formatNumber(row.rate)}
+        </p>
+      </div>
+      <div className="flex items-center gap-2">
+        <p className="whitespace-nowrap text-sm font-bold text-[#25322b]">
+          {formatNumber(row.amount)}
+        </p>
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="Preview and print invoice"
+          title="Preview / Print"
+          onClick={() => onInvoice(row)}
+          className="h-8 w-8 text-[#2c6e49] hover:bg-[#eaf5ed]"
+        >
+          <ReceiptText className="h-4 w-4" />
+        </Button>
+        {userRole === "admin" && (
+          <DeleteButton onClick={() => onRemove(row.id)} />
+        )}
+      </div>
+    </div>
+  );
+}
 
 function InvoiceDialog({ row, onClose }: { row: any; onClose: () => void }) {
-  const [slipSize, setSlipSize] = useState<SlipSize>(() => (typeof window !== "undefined" && window.localStorage.getItem("gold-slip-size") === "80" ? "80" : "58"));
+  const [slipSize, setSlipSize] = useState<SlipSize>(() =>
+    typeof window !== "undefined" &&
+    window.localStorage.getItem("gold-slip-size") === "80"
+      ? "80"
+      : "58"
+  );
   const [previewMode, setPreviewMode] = useState(true);
   useEffect(() => {
     if (!row) return;
@@ -55,13 +431,217 @@ function InvoiceDialog({ row, onClose }: { row: any; onClose: () => void }) {
     };
   }, [row, slipSize]);
   if (!row) return null;
-  const typeLabel = row.transactionType === "sell" ? "အရောင်း ဘောင်ချာ" : "အဝယ် ဘောင်ချာ";
-  const invoiceAmount = Number(row.amount ?? 0) || Math.round((Number(row.kyat || 0) + Number(row.pae || 0) / 16 + Number(row.yway || 0) / 128) * Number(row.rate || 0));
+  const typeLabel =
+    row.transactionType === "sell" ? "အရောင်း ဘောင်ချာ" : "အဝယ် ဘောင်ချာ";
+  const invoiceAmount =
+    Number(row.amount ?? 0) ||
+    Math.round(
+      (Number(row.kyat || 0) +
+        Number(row.pae || 0) / 16 +
+        Number(row.yway || 0) / 128) *
+        Number(row.rate || 0)
+    );
   const paperWidth = slipSize === "58" ? "w-[58mm]" : "w-[80mm]";
-  return <Dialog open={Boolean(row)} onOpenChange={(open) => !open && onClose()}><DialogContent className="max-w-[720px] overflow-hidden p-0"><div className="border-b border-[#e5ece7] bg-[#f7fbf8] px-5 py-4 no-print"><div className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-sm font-bold text-[#1e3025]">ဘောင်ချာ ကြိုကြည့်ရန်</p><p className="text-xs text-[#78867e]">Print မထုတ်ခင် size နှင့် ပုံစံကို စစ်ဆေးပါ</p></div><div className="flex items-center gap-2"><label htmlFor="slip-size" className="text-xs font-semibold text-[#53645b]">စာရွက်အရွယ်</label><select id="slip-size" value={slipSize} onChange={(e) => setSlipSize(e.target.value as SlipSize)} className="h-9 rounded-md border border-[#dfe7e2] bg-white px-2 text-sm font-semibold text-[#25322b] outline-none focus:ring-2 focus:ring-[#6a9b7a]"><option value="58">58mm</option><option value="80">80mm</option></select><Button type="button" variant={previewMode ? "default" : "outline"} size="sm" onClick={() => setPreviewMode(true)} className={previewMode ? "bg-[#276044] text-white hover:bg-[#1f5038]" : "border-[#dfe7e2] text-[#53645b]"}><Eye className="mr-1.5 h-4 w-4" />Preview</Button></div></div></div><div className="max-h-[68vh] overflow-auto bg-[#edf2ee] p-4 sm:p-8"><div className={`invoice-preview-paper mx-auto ${paperWidth} max-w-full bg-white shadow-md`} style={{ "--slip-width": `${slipSize}mm` } as React.CSSProperties}><div className="invoice-print-area" data-slip-size={slipSize}><DialogHeader className="border-b border-[#e5ece7] bg-[#f7fbf8] px-4 py-4"><div className="flex items-start justify-between gap-3"><div><DialogTitle className="mt-1 text-xl text-[#1e3025]">{typeLabel}</DialogTitle><DialogDescription className="mt-1 text-xs">ဘောင်ချာအမှတ် #{row.id}</DialogDescription></div><ReceiptText className="h-7 w-7 text-[#2c6e49]" /></div></DialogHeader><div className="space-y-4 px-4 py-5 text-sm"><div className="grid grid-cols-2 gap-3"><Info label="နေ့စွဲ" value={formatDate(row.tradeDate)} /><Info label="အမည်" value={row.partyName} /></div><div className="rounded-lg border border-[#e0e9e2] bg-[#fbfdfb] p-3"><div className="grid grid-cols-2 gap-3"><Info label="အမျိုးအစား" value={row.transactionType === "sell" ? "ရောင်း" : "ဝယ်"} /><Info label="ပစ္စည်း" value={row.itemName || "ရွှေ"} /><Info label="အလေးချိန်" value={formatWeight(row)} /></div></div><div className="flex items-end justify-between border-t-2 border-[#1f5e3a] pt-3"><span className="font-semibold text-[#53645b]">စုစုပေါင်း Amount</span><span className="text-xl font-bold text-[#1f5e3a]">{formatNumber(invoiceAmount)} ကျပ်</span></div>{row.note && <div className="border-t border-[#edf1ee] pt-3 text-[#68756d]"><span className="font-semibold">မှတ်ချက်: </span>{row.note}</div>}<p className="pt-2 text-center text-xs text-[#89968d]">ကျေးဇူးတင်ပါသည်။</p></div></div></div></div><div className="flex items-center justify-between gap-2 border-t border-[#edf1ee] bg-white px-5 py-4 no-print"><div className="text-xs text-[#78867e]">ရွေးထားသည်: <strong className="text-[#25322b]">{slipSize}mm</strong></div><div className="flex gap-2"><Button variant="outline" onClick={onClose}>ပိတ်မည်</Button><Button onClick={() => window.print()} className="bg-[#276044] text-white hover:bg-[#1f5038]"><Printer className="mr-2 h-4 w-4" />Print ထုတ်မည်</Button></div></div></DialogContent></Dialog>;
+  return (
+    <Dialog open={Boolean(row)} onOpenChange={open => !open && onClose()}>
+      <DialogContent className="max-w-[720px] overflow-hidden p-0">
+        <div className="border-b border-[#e5ece7] bg-[#f7fbf8] px-5 py-4 no-print">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-bold text-[#1e3025]">
+                ဘောင်ချာ ကြိုကြည့်ရန်
+              </p>
+              <p className="text-xs text-[#78867e]">
+                Print မထုတ်ခင် size နှင့် ပုံစံကို စစ်ဆေးပါ
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <label
+                htmlFor="slip-size"
+                className="text-xs font-semibold text-[#53645b]"
+              >
+                စာရွက်အရွယ်
+              </label>
+              <select
+                id="slip-size"
+                value={slipSize}
+                onChange={e => setSlipSize(e.target.value as SlipSize)}
+                className="h-9 rounded-md border border-[#dfe7e2] bg-white px-2 text-sm font-semibold text-[#25322b] outline-none focus:ring-2 focus:ring-[#6a9b7a]"
+              >
+                <option value="58">58mm</option>
+                <option value="80">80mm</option>
+              </select>
+              <Button
+                type="button"
+                variant={previewMode ? "default" : "outline"}
+                size="sm"
+                onClick={() => setPreviewMode(true)}
+                className={
+                  previewMode
+                    ? "bg-[#276044] text-white hover:bg-[#1f5038]"
+                    : "border-[#dfe7e2] text-[#53645b]"
+                }
+              >
+                <Eye className="mr-1.5 h-4 w-4" />
+                Preview
+              </Button>
+            </div>
+          </div>
+        </div>
+        <div className="max-h-[68vh] overflow-auto bg-[#edf2ee] p-4 sm:p-8">
+          <div
+            className={`invoice-preview-paper mx-auto ${paperWidth} max-w-full bg-white shadow-md`}
+            style={{ "--slip-width": `${slipSize}mm` } as React.CSSProperties}
+          >
+            <div className="invoice-print-area" data-slip-size={slipSize}>
+              <DialogHeader className="border-b border-[#e5ece7] bg-[#f7fbf8] px-4 py-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <DialogTitle className="mt-1 text-xl text-[#1e3025]">
+                      {typeLabel}
+                    </DialogTitle>
+                    <DialogDescription className="mt-1 text-xs">
+                      ဘောင်ချာအမှတ် #{row.id}
+                    </DialogDescription>
+                  </div>
+                  <ReceiptText className="h-7 w-7 text-[#2c6e49]" />
+                </div>
+              </DialogHeader>
+              <div className="space-y-4 px-4 py-5 text-sm">
+                <div className="grid grid-cols-2 gap-3">
+                  <Info label="နေ့စွဲ" value={formatDate(row.tradeDate)} />
+                  <Info label="အမည်" value={row.partyName} />
+                </div>
+                <div className="rounded-lg border border-[#e0e9e2] bg-[#fbfdfb] p-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <Info
+                      label="အမျိုးအစား"
+                      value={row.transactionType === "sell" ? "ရောင်း" : "ဝယ်"}
+                    />
+                    <Info label="ပစ္စည်း" value={row.itemName || "ရွှေ"} />
+                    <Info label="အလေးချိန်" value={formatWeight(row)} />
+                  </div>
+                </div>
+                <div className="flex items-end justify-between border-t-2 border-[#1f5e3a] pt-3">
+                  <span className="font-semibold text-[#53645b]">
+                    စုစုပေါင်း Amount
+                  </span>
+                  <span className="text-xl font-bold text-[#1f5e3a]">
+                    {formatNumber(invoiceAmount)} ကျပ်
+                  </span>
+                </div>
+                {row.note && (
+                  <div className="border-t border-[#edf1ee] pt-3 text-[#68756d]">
+                    <span className="font-semibold">မှတ်ချက်: </span>
+                    {row.note}
+                  </div>
+                )}
+                <p className="pt-2 text-center text-xs text-[#89968d]">
+                  ကျေးဇူးတင်ပါသည်။
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center justify-between gap-2 border-t border-[#edf1ee] bg-white px-5 py-4 no-print">
+          <div className="text-xs text-[#78867e]">
+            ရွေးထားသည်: <strong className="text-[#25322b]">{slipSize}mm</strong>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={onClose}>
+              ပိတ်မည်
+            </Button>
+            <Button
+              onClick={() => window.print()}
+              className="bg-[#276044] text-white hover:bg-[#1f5038]"
+            >
+              <Printer className="mr-2 h-4 w-4" />
+              Print ထုတ်မည်
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
 }
-function Info({ label, value }: { label: string; value: string }) { return <div><p className="text-xs text-[#89968d]">{label}</p><p className="mt-1 font-semibold text-[#25322b]">{value}</p></div>; }
-function formatWeight(row: any) { return `${formatNumber(row.kyat)} ကျပ် ${formatNumber(row.pae)} ပဲ ${formatNumber(row.yway, 1)} ရွေး`; }
-function TypeBadge({ type }: { type: string }) { return <Badge className={type === "sell" ? "border-0 bg-[#fff1df] text-[#a15f13]" : "border-0 bg-[#e7f5ea] text-[#2c6e49]"}>{type === "sell" ? "ရောင်း" : "ဝယ်"}</Badge>; }
-function DeleteButton({ onClick }: { onClick: () => void }) { return <Button variant="ghost" size="icon" aria-label="Delete transaction" onClick={onClick} className="h-8 w-8 text-[#b16d65] hover:bg-[#fff1ef] hover:text-[#9c3b30]"><Trash2 className="h-4 w-4" /></Button>; }
-function SummaryCard({ label, value, detail, icon, tone }: { label: string; value: string; detail: string; icon: React.ReactNode; tone: "orange" | "green" | "purple" | "blue" }) { const tones = { orange: "bg-[#fff4e3] text-[#a15f13]", green: "bg-[#e8f5eb] text-[#2c6e49]", purple: "bg-[#f1ecfb] text-[#7651a8]", blue: "bg-[#e8f2fb] text-[#3e6f9e]" }; return <Card className="rounded-xl border-[#e1e9e4] shadow-sm"><CardContent className="p-3 sm:p-4"><div className="flex items-start justify-between gap-1.5"><div className="min-w-0"><p className="truncate text-[11px] font-semibold text-[#839087] sm:text-xs">{label}</p><p className="mt-1 truncate text-sm font-bold tracking-tight text-[#25322b] sm:text-lg">{value}</p><p className="mt-0.5 truncate text-[10px] text-[#839087] sm:text-xs">{detail}</p></div><div className={`shrink-0 rounded-lg p-2 sm:rounded-xl sm:p-2.5 ${tones[tone]}`}>{icon}</div></div></CardContent></Card>; }
+function Info({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="text-xs text-[#89968d]">{label}</p>
+      <p className="mt-1 font-semibold text-[#25322b]">{value}</p>
+    </div>
+  );
+}
+function formatWeight(row: any) {
+  return `${formatNumber(row.kyat)} ကျပ် ${formatNumber(row.pae)} ပဲ ${formatNumber(row.yway, 1)} ရွေး`;
+}
+function TypeBadge({ type }: { type: string }) {
+  return (
+    <Badge
+      className={
+        type === "sell"
+          ? "border-0 bg-[#fff1df] text-[#a15f13]"
+          : "border-0 bg-[#e7f5ea] text-[#2c6e49]"
+      }
+    >
+      {type === "sell" ? "ရောင်း" : "ဝယ်"}
+    </Badge>
+  );
+}
+function DeleteButton({ onClick }: { onClick: () => void }) {
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      aria-label="Delete transaction"
+      onClick={onClick}
+      className="h-8 w-8 text-[#b16d65] hover:bg-[#fff1ef] hover:text-[#9c3b30]"
+    >
+      <Trash2 className="h-4 w-4" />
+    </Button>
+  );
+}
+function SummaryCard({
+  label,
+  value,
+  detail,
+  icon,
+  tone,
+}: {
+  label: string;
+  value: string;
+  detail: string;
+  icon: React.ReactNode;
+  tone: "orange" | "green" | "purple" | "blue";
+}) {
+  const tones = {
+    orange: "bg-[#fff4e3] text-[#a15f13]",
+    green: "bg-[#e8f5eb] text-[#2c6e49]",
+    purple: "bg-[#f1ecfb] text-[#7651a8]",
+    blue: "bg-[#e8f2fb] text-[#3e6f9e]",
+  };
+  return (
+    <Card className="rounded-xl border-[#e1e9e4] shadow-sm">
+      <CardContent className="p-3 sm:p-4">
+        <div className="flex items-start justify-between gap-1.5">
+          <div className="min-w-0">
+            <p className="truncate text-[11px] font-semibold text-[#839087] sm:text-xs">
+              {label}
+            </p>
+            <p className="mt-1 truncate text-sm font-bold tracking-tight text-[#25322b] sm:text-lg">
+              {value}
+            </p>
+            <p className="mt-0.5 truncate text-[10px] text-[#839087] sm:text-xs">
+              {detail}
+            </p>
+          </div>
+          <div
+            className={`shrink-0 rounded-lg p-2 sm:rounded-xl sm:p-2.5 ${tones[tone]}`}
+          >
+            {icon}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}

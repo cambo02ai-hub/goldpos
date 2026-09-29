@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, lte, sql } from "drizzle-orm";
+import { and, desc, eq, gte, lt, lte, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   cashEntries,
@@ -22,8 +22,10 @@ import { ENV } from "./_core/env";
 import {
   calculateHlawKyoot,
   calculateNo2Weight,
+  calculateStockBalance,
   estimateDailyGoldProfit,
   goldWeight,
+  goldWeightParts,
 } from "../shared/shop-calculations";
 
 type DateFilters = { from?: string; to?: string };
@@ -722,15 +724,16 @@ export async function getShopDailyOverview(date: string) {
     db
       .select()
       .from(shopDailyClosings)
-      .where(lte(shopDailyClosings.closingDate, date))
+      .where(lt(shopDailyClosings.closingDate, date))
       .orderBy(desc(shopDailyClosings.closingDate))
       .limit(1),
     getGoldSummary({ from: date, to: date }),
     listShopJournalEntries({ from: date, to: date }),
   ]);
   const current = currentRows[0];
-  const previous =
-    priorRows[0]?.closingDate === date ? undefined : priorRows[0];
+  // Always use the latest close strictly before the selected date.
+  // This keeps a saved day's opening linked to the prior day's closing.
+  const previous = priorRows[0];
   const previousDate = previous?.closingDate;
   const previousTotals = previousDate
     ? await getBookTotals(previousDate)
@@ -794,27 +797,43 @@ export async function getShopDailyOverview(date: string) {
         0
       )
     : 0;
-  const opening = current
+  const opening = previous
     ? {
-        cash: Number(current.openingCash),
-        goldKyat: Number(current.openingGoldKyat),
-        goldPae: Number(current.openingGoldPae),
-        goldYway: Number(current.openingGoldYway),
-        goldValue: Number(current.openingGoldValue),
-      }
-    : {
         cash: previousCash,
-        goldKyat: previous ? Math.floor(Math.max(0, previousGoldWeight)) : 0,
-        goldPae: previous
-          ? Math.floor((Math.max(0, previousGoldWeight) % 1) * 16)
-          : 0,
-        goldYway: previous
-          ? Math.round(
-              (Math.max(0, previousGoldWeight) % (1 / 16)) * 128 * 10
-            ) / 10
-          : 0,
+        ...(() => {
+          const parts = goldWeightParts(Math.max(0, previousGoldWeight));
+          return {
+            goldKyat: parts.kyat,
+            goldPae: parts.pae,
+            goldYway: parts.yway,
+          };
+        })(),
         goldValue: previousGoldValue,
-      };
+      }
+    : current
+      ? {
+          cash: Number(current.openingCash),
+          goldKyat: Number(current.openingGoldKyat),
+          goldPae: Number(current.openingGoldPae),
+          goldYway: Number(current.openingGoldYway),
+          goldValue: Number(current.openingGoldValue),
+        }
+      : {
+          cash: 0,
+          goldKyat: 0,
+          goldPae: 0,
+          goldYway: 0,
+          goldValue: 0,
+        };
+  const stockBalance = calculateStockBalance({
+    opening: {
+      kyat: opening.goldKyat,
+      pae: opening.goldPae,
+      yway: opening.goldYway,
+    },
+    boughtWeight: goldSummary.buyWeight,
+    soldWeight: goldSummary.sellWeight,
+  });
   const totals = journal.reduce(
     (result, entry) => {
       result[entry.side] += Number(entry.amount);
@@ -851,6 +870,7 @@ export async function getShopDailyOverview(date: string) {
     purchases: goldSummary.buyAmount,
     soldWeight: goldSummary.sellWeight,
     boughtWeight: goldSummary.buyWeight,
+    stockBalance,
     debit: totals.debit,
     credit: totals.credit,
     expectedCash,

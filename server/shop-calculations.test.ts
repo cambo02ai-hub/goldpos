@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   calculateHlawKyoot,
   calculateNo2Weight,
+  calculateStockBalance,
   estimateDailyGoldProfit,
   goldWeightParts,
 } from "../shared/shop-calculations";
@@ -9,6 +10,16 @@ import {
 describe("Excel-based shop calculations", () => {
   it("converts weight into kyat, pae and yway for the daily carry-forward", () => {
     expect(goldWeightParts(1.5)).toEqual({ kyat: 1, pae: 8, yway: 0 });
+  });
+
+  it("calculates stock as opening plus buys minus sells", () => {
+    const balance = calculateStockBalance({
+      opening: { kyat: 2, pae: 4, yway: 0 },
+      boughtWeight: 0.5,
+      soldWeight: 1,
+    });
+    expect(balance.rawClosingWeight).toBe(1.75);
+    expect(balance.expectedClosing).toEqual({ kyat: 1, pae: 12, yway: 0 });
   });
 
   it("calculates No.2 output as three times incoming Hlaw weight", () => {

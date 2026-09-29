@@ -17,13 +17,18 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { trpc } from "@/lib/trpc";
 import {
   calculateNo2Weight,
+  calculateStockBalance,
   estimateDailyGoldProfit,
   goldWeightParts,
 } from "@shared/shop-calculations";
 
 const today = () => new Date().toISOString().slice(0, 10);
-const formatNumber = (value: number) =>
-  new Intl.NumberFormat("en-US").format(value || 0);
+const formatNumber = (value: number, maximumFractionDigits = 0) =>
+  new Intl.NumberFormat("en-US", { maximumFractionDigits }).format(value || 0);
+const formatGoldWeight = (weight: number) => {
+  const parts = goldWeightParts(Math.max(0, weight));
+  return `${formatNumber(parts.kyat)} ကျပ် ${formatNumber(parts.pae)} ပဲ ${formatNumber(parts.yway, 1)} ရွေး`;
+};
 const monthStart = (month: string) => `${month}-01`;
 const monthEnd = (month: string) =>
   `${month}-${String(new Date(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 0).getDate()).padStart(2, "0")}`;
@@ -158,15 +163,18 @@ export default function ShopWorkflow() {
   useEffect(() => {
     if (!daily) return;
     const close = daily.closing;
-    const carryWeight = Math.max(
-      0,
-      daily.opening.goldKyat +
-        daily.opening.goldPae / 16 +
-        daily.opening.goldYway / 128 +
-        daily.boughtWeight -
-        daily.soldWeight
-    );
-    const carryGold = goldWeightParts(carryWeight);
+    const calculated =
+      daily.stockBalance ??
+      calculateStockBalance({
+        opening: {
+          kyat: daily.opening.goldKyat,
+          pae: daily.opening.goldPae,
+          yway: daily.opening.goldYway,
+        },
+        boughtWeight: daily.boughtWeight,
+        soldWeight: daily.soldWeight,
+      });
+    const carryGold = calculated.expectedClosing;
     setClosingForm({
       openingCash: String(daily.opening.cash),
       openingGoldKyat: String(daily.opening.goldKyat),
@@ -283,6 +291,7 @@ export default function ShopWorkflow() {
       }, {}),
     [leaveRows]
   );
+  const stockBalance = daily?.stockBalance;
   const closeValue = Math.round(
     (inputNumber(closingForm.closingGoldKyat) +
       inputNumber(closingForm.closingGoldPae) / 16 +
@@ -457,6 +466,71 @@ export default function ShopWorkflow() {
                 tone="purple"
               />
             </div>
+            <Card className="rounded-2xl border-[#dfe8e2] shadow-sm">
+              <CardHeader className="border-b border-[#edf1ee]">
+                <CardTitle className="text-lg">ရွှေလက်ကျန်စာရင်း</CardTitle>
+                <p className="text-sm text-[#78867e]">
+                  အဖွင့်လက်ကျန် + ဝယ် − ရောင်း = မျှော်မှန်းပိတ်လက်ကျန်
+                </p>
+              </CardHeader>
+              <CardContent className="p-4 sm:p-6">
+                <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                  <Metric
+                    label="အဖွင့်လက်ကျန်"
+                    value={
+                      stockBalance
+                        ? formatGoldWeight(stockBalance.openingWeight)
+                        : "0 ကျပ် 0 ပဲ 0 ရွေး"
+                    }
+                    hint="ယခင်နေ့ပိတ်လက်ကျန်မှ"
+                    tone="blue"
+                  />
+                  <Metric
+                    label="ယနေ့ဝယ်"
+                    value={
+                      stockBalance
+                        ? formatGoldWeight(stockBalance.boughtWeight)
+                        : "0 ကျပ် 0 ပဲ 0 ရွေး"
+                    }
+                    hint="POS အဝယ်စုစုပေါင်း"
+                    tone="green"
+                  />
+                  <Metric
+                    label="ယနေ့ရောင်း"
+                    value={
+                      stockBalance
+                        ? formatGoldWeight(stockBalance.soldWeight)
+                        : "0 ကျပ် 0 ပဲ 0 ရွေး"
+                    }
+                    hint="POS အရောင်းစုစုပေါင်း"
+                    tone="orange"
+                  />
+                  <Metric
+                    label="မျှော်မှန်းပိတ်လက်ကျန်"
+                    value={
+                      stockBalance
+                        ? formatGoldWeight(stockBalance.expectedClosingWeight)
+                        : "0 ကျပ် 0 ပဲ 0 ရွေး"
+                    }
+                    hint="အလိုအလျောက်တွက်ချက်မှု"
+                    tone="purple"
+                  />
+                </div>
+                {daily?.closing && stockBalance && (
+                  <div className="mt-4 rounded-lg border border-[#e5ebe7] bg-[#f8fbf9] p-3 text-sm text-[#53645b]">
+                    လက်တွေ့ပိတ်လက်ကျန်:{" "}
+                    <b>
+                      {formatGoldWeight(
+                        daily.closing.goldKyat +
+                          daily.closing.goldPae / 16 +
+                          daily.closing.goldYway / 128
+                      )}
+                    </b>{" "}
+                    · မျှော်မှန်းနှင့် ကွာခြားချက်ကို စစ်ဆေးပြီးမှ နေ့ပိတ်ပါ။
+                  </div>
+                )}
+              </CardContent>
+            </Card>
             <Card className="rounded-2xl border-[#dfe8e2] shadow-sm">
               <CardHeader className="border-b border-[#edf1ee]">
                 <CardTitle className="text-lg">နေ့ကုန်စာရင်းပိတ်</CardTitle>
