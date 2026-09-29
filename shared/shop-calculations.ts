@@ -13,6 +13,35 @@ export function goldWeightParts(weight: number): GoldWeightParts {
   return { kyat, pae, yway };
 }
 
+export type GoldStockBalance = {
+  openingWeight: number;
+  boughtWeight: number;
+  soldWeight: number;
+  rawClosingWeight: number;
+  expectedClosingWeight: number;
+  expectedClosing: GoldWeightParts;
+};
+
+/** The single source of truth for the daily stock formula. */
+export function calculateStockBalance(input: {
+  opening: GoldWeightParts;
+  boughtWeight: number;
+  soldWeight: number;
+}): GoldStockBalance {
+  const openingWeight = goldWeight(input.opening);
+  const rawClosingWeight =
+    openingWeight + input.boughtWeight - input.soldWeight;
+  const expectedClosingWeight = Math.max(0, rawClosingWeight);
+  return {
+    openingWeight,
+    boughtWeight: input.boughtWeight,
+    soldWeight: input.soldWeight,
+    rawClosingWeight,
+    expectedClosingWeight,
+    expectedClosing: goldWeightParts(expectedClosingWeight),
+  };
+}
+
 export function calculateNo2Weight(input: GoldWeightParts): GoldWeightParts {
   const tripled = goldWeight(input) * 3;
   const kyat = Math.floor(tripled);
