@@ -8,6 +8,7 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import AdminDashboard from "./pages/AdminDashboard";
 import Finance from "./pages/Finance";
 import Home from "./pages/Home";
+import HlawOo from "./pages/HlawOo";
 import NewEntry from "./pages/NewEntry";
 import ShopWorkflow from "./pages/ShopWorkflow";
 
@@ -22,6 +23,11 @@ function Router() {
       <Route path="/new">
         <DashboardLayout>
           <NewEntry />
+        </DashboardLayout>
+      </Route>
+      <Route path="/hlaw-oo">
+        <DashboardLayout>
+          <HlawOo />
         </DashboardLayout>
       </Route>
       <Route path="/finance">
