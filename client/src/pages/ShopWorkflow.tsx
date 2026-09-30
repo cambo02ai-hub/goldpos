@@ -402,8 +402,8 @@ export default function ShopWorkflow() {
             ဆိုင်စာရင်းအုပ်
           </h1>
           <p className="mt-1 text-sm text-[#68756d]">
-            နေ့စဉ်ရွှေစာရင်း၊ Dr/Cr account code၊ လှော်အိုးနှင့် ဝန်ထမ်းခွင့်
-            workflow ကို စီမံပါ။
+            နေ့စဉ်ရွှေစာရင်း၊ Dr/Cr account code နှင့် ဝန်ထမ်းခွင့် workflow ကို
+            စီမံပါ။ လှော်အိုးစာရင်းကို သီးခြား menu မှ စီမံပါ။
           </p>
         </header>
         <Tabs defaultValue="daily" className="space-y-4">
@@ -416,10 +416,6 @@ export default function ShopWorkflow() {
               <TabsTrigger value="journal" className="px-3 py-2">
                 <BookOpenCheck className="mr-1.5 h-4 w-4" />
                 Dr / Cr စာရင်း
-              </TabsTrigger>
-              <TabsTrigger value="hlaw" className="px-3 py-2">
-                <Coins className="mr-1.5 h-4 w-4" />
-                လှော်အိုး
               </TabsTrigger>
               <TabsTrigger value="leave" className="px-3 py-2">
                 <Users className="mr-1.5 h-4 w-4" />
@@ -943,206 +939,6 @@ export default function ShopWorkflow() {
                         <tr>
                           <td
                             colSpan={7}
-                            className="px-4 py-10 text-center text-[#89968d]"
-                          >
-                            စာရင်းမတွေ့ပါ
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-          <TabsContent value="hlaw" className="space-y-4">
-            <Card className="rounded-2xl border-[#dfe8e2] shadow-sm">
-              <CardHeader>
-                <CardTitle className="text-lg">
-                  လှော်အိုး / ရွှေလုပ်ငန်းမှတ်တမ်း
-                </CardTitle>
-                <p className="text-sm text-[#78867e]">
-                  Excel လှော်အိုး sheet အတိုင်း Hlaw ရွှေ၊ No.2 (Hlaw × 3)၊ Tin
-                  အလေးချိန်၊ Kyoot နှင့် လှော်ခကို မှတ်တမ်းတင်ပါ။ လှော်ခကို Dr
-                  account 1002 သို့ အလိုအလျောက်တင်ပါသည်။
-                </p>
-              </CardHeader>
-              <CardContent>
-                <form
-                  onSubmit={submitHlaw}
-                  className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
-                >
-                  <label className="text-sm font-medium text-[#53645b]">
-                    နေ့စွဲ
-                    <Input
-                      className={fieldClass}
-                      type="date"
-                      value={hlawForm.serviceDate}
-                      onChange={e =>
-                        setHlawForm({
-                          ...hlawForm,
-                          serviceDate: e.target.value,
-                        })
-                      }
-                    />
-                  </label>
-                  <label className="text-sm font-medium text-[#53645b]">
-                    အမည်
-                    <Input
-                      className={fieldClass}
-                      value={hlawForm.customerName}
-                      onChange={e =>
-                        setHlawForm({
-                          ...hlawForm,
-                          customerName: e.target.value,
-                        })
-                      }
-                      maxLength={255}
-                    />
-                  </label>
-                  <NumberField
-                    label="Hlaw ကျပ်သား"
-                    value={hlawForm.hlawKyat}
-                    onChange={v => setHlawForm({ ...hlawForm, hlawKyat: v })}
-                  />
-                  <NumberField
-                    label="Hlaw ပဲ"
-                    value={hlawForm.hlawPae}
-                    max="15"
-                    onChange={v => setHlawForm({ ...hlawForm, hlawPae: v })}
-                  />
-                  <NumberField
-                    label="Hlaw ရွေး"
-                    value={hlawForm.hlawYway}
-                    max="7.5"
-                    step="0.1"
-                    onChange={v => setHlawForm({ ...hlawForm, hlawYway: v })}
-                  />
-                  <div className="rounded-lg bg-[#f5f8f5] p-3 text-sm text-[#54635b]">
-                    No.2 အလိုအလျောက်: {no2Preview.kyat}-{no2Preview.pae}-
-                    {no2Preview.yway} (ကျပ်-ပဲ-ရွေး)
-                  </div>
-                  <NumberField
-                    label="Tin ကျပ်သား"
-                    value={hlawForm.tinKyat}
-                    onChange={v => setHlawForm({ ...hlawForm, tinKyat: v })}
-                  />
-                  <NumberField
-                    label="Tin ပဲ"
-                    value={hlawForm.tinPae}
-                    max="15"
-                    onChange={v => setHlawForm({ ...hlawForm, tinPae: v })}
-                  />
-                  <NumberField
-                    label="Tin Htwe"
-                    value={hlawForm.tinHtwe}
-                    max="7.5"
-                    step="0.1"
-                    onChange={v => setHlawForm({ ...hlawForm, tinHtwe: v })}
-                  />
-                  <NumberField
-                    label="လှော်ခ (ကျပ်)"
-                    value={hlawForm.serviceFee}
-                    onChange={v => setHlawForm({ ...hlawForm, serviceFee: v })}
-                  />
-                  <label className="text-sm font-medium text-[#53645b] lg:col-span-2">
-                    မှတ်ချက်
-                    <Input
-                      className={fieldClass}
-                      value={hlawForm.note}
-                      onChange={e =>
-                        setHlawForm({ ...hlawForm, note: e.target.value })
-                      }
-                    />
-                  </label>
-                  <div className="flex items-end">
-                    <Button
-                      type="submit"
-                      disabled={hlawMutation.isPending}
-                      className="w-full bg-[#2c6e49] hover:bg-[#245a3c]"
-                    >
-                      <Plus className="mr-2 h-4 w-4" />
-                      ဝန်ဆောင်မှုစာရင်းထည့်ရန်
-                    </Button>
-                  </div>
-                </form>
-              </CardContent>
-            </Card>
-            <Card className="rounded-2xl border-[#dfe8e2] shadow-sm">
-              <CardHeader className="gap-3 border-b border-[#edf1ee] sm:flex-row sm:items-center sm:justify-between">
-                <CardTitle className="text-lg">လှော်အိုးစာရင်း</CardTitle>
-                <div className="flex gap-2">
-                  <Input
-                    type="date"
-                    className="w-[145px]"
-                    value={from}
-                    onChange={e => setFrom(e.target.value)}
-                  />
-                  <Input
-                    type="date"
-                    className="w-[145px]"
-                    value={to}
-                    onChange={e => setTo(e.target.value)}
-                  />
-                </div>
-              </CardHeader>
-              <CardContent className="p-0">
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-[900px] text-sm">
-                    <thead className="bg-[#f8faf8] text-left text-xs text-[#748079]">
-                      <tr>
-                        <th className="px-4 py-3">နေ့စွဲ</th>
-                        <th className="px-3 py-3">အမည်</th>
-                        <th className="px-3 py-3">Hlaw (ကျပ်-ပဲ-ရွေး)</th>
-                        <th className="px-3 py-3">No.2 (×3)</th>
-                        <th className="px-3 py-3">Tin</th>
-                        <th className="px-3 py-3 text-right">Kyoot</th>
-                        <th className="px-3 py-3 text-right">လှော်ခ</th>
-                        <th className="px-4 py-3" />
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[#edf1ee]">
-                      {hlawRows.map(row => (
-                        <tr key={row.id}>
-                          <td className="px-4 py-3">{row.serviceDate}</td>
-                          <td className="px-3 py-3">{row.customerName}</td>
-                          <td className="px-3 py-3">
-                            {row.hlawKyat}-{row.hlawPae}-{row.hlawYway}
-                          </td>
-                          <td className="px-3 py-3">
-                            {row.no2Kyat}-{row.no2Pae}-{row.no2Yway}
-                          </td>
-                          <td className="px-3 py-3">
-                            {row.tinKyat}-{row.tinPae}-{row.tinHtwe}
-                          </td>
-                          <td className="px-3 py-3 text-right">
-                            {row.kyoot === null
-                              ? "—"
-                              : Number(row.kyoot).toFixed(2)}
-                          </td>
-                          <td className="px-3 py-3 text-right">
-                            {formatNumber(Number(row.serviceFee))}
-                          </td>
-                          <td className="px-4 py-3 text-right">
-                            {user?.role === "admin" && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() =>
-                                  deleteHlaw.mutate({ id: row.id })
-                                }
-                                aria-label="မှတ်တမ်းဖျက်ရန်"
-                              >
-                                <Trash2 className="h-4 w-4 text-[#9a5b4d]" />
-                              </Button>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                      {hlawRows.length === 0 && (
-                        <tr>
-                          <td
-                            colSpan={8}
                             className="px-4 py-10 text-center text-[#89968d]"
                           >
                             စာရင်းမတွေ့ပါ
