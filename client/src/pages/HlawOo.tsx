@@ -441,7 +441,6 @@ function HlawInvoiceDialog({
           className={`mx-auto my-5 bg-white p-5 text-sm text-[#17201d] ${slipSize === "58" ? "w-[58mm]" : "w-[80mm]"}`}
         >
           <div className="text-center">
-            <p className="text-base font-bold">Ratanar Maung Gold House</p>
             <p className="mt-1 font-semibold">လှော်အိုး ဝန်ဆောင်မှုဘောင်ချာ</p>
             <p className="text-xs">{row.serviceDate}</p>
           </div>
