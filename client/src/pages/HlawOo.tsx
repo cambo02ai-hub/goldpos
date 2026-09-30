@@ -10,7 +10,7 @@ import { FileText, Printer, Search, Trash2, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
-type SlipSize = "58" | "80";
+type SlipSize = "58" | "80" | "custom";
 const today = () => new Date().toISOString().slice(0, 10);
 const monthStart = () => `${today().slice(0, 8)}01`;
 const formatNumber = (value: number, maximumFractionDigits = 0) =>
@@ -513,16 +513,23 @@ function HlawInvoiceDialog({
   onClose: () => void;
 }) {
   const [slipSize, setSlipSize] = useState<SlipSize>(() =>
-    typeof window !== "undefined" &&
-    window.localStorage.getItem("gold-hlaw-slip-size") === "80"
-      ? "80"
+    typeof window !== "undefined"
+      ? (window.localStorage.getItem("gold-hlaw-slip-size") as SlipSize) || "58"
       : "58"
+  );
+  const [customLength, setCustomLength] = useState(() =>
+    typeof window !== "undefined"
+      ? window.localStorage.getItem("gold-hlaw-slip-length") || "180"
+      : "180"
   );
   if (!row) return null;
   const print = () => {
+    const length = Math.min(500, Math.max(50, Number(customLength) || 180));
     window.localStorage.setItem("gold-hlaw-slip-size", slipSize);
+    window.localStorage.setItem("gold-hlaw-slip-length", String(length));
     const style = document.createElement("style");
-    style.textContent = `@media print { @page { size: ${slipSize}mm 180mm; margin: 0; } }`;
+    const width = slipSize === "80" ? 80 : 58;
+    style.textContent = `@media print { @page { size: ${width}mm ${slipSize === "custom" ? length : 180}mm; margin: 0; } }`;
     document.head.appendChild(style);
     window.print();
     window.setTimeout(() => style.remove(), 1000);
@@ -545,7 +552,24 @@ function HlawInvoiceDialog({
             >
               <option value="58">58mm</option>
               <option value="80">80mm</option>
+              <option value="custom">စိတ်ကြိုက်</option>
             </select>
+            {slipSize === "custom" && (
+              <label className="flex items-center gap-1 text-xs text-[#53645b]">
+                အရှည်
+                <Input
+                  className="h-9 w-20 bg-white"
+                  type="number"
+                  min="50"
+                  max="500"
+                  step="1"
+                  value={customLength}
+                  onChange={e => setCustomLength(e.target.value)}
+                  aria-label="Slip အရှည် (mm)"
+                />
+                mm
+              </label>
+            )}
             <Button variant="ghost" size="icon" onClick={onClose}>
               <X className="h-4 w-4" />
             </Button>
@@ -553,6 +577,13 @@ function HlawInvoiceDialog({
         </div>
         <div
           className={`mx-auto my-5 bg-white p-5 text-sm text-[#17201d] ${slipSize === "58" ? "w-[58mm]" : "w-[80mm]"}`}
+          style={
+            slipSize === "custom"
+              ? {
+                  minHeight: `${Math.min(500, Math.max(50, Number(customLength) || 180))}mm`,
+                }
+              : undefined
+          }
         >
           <div className="text-center">
             <p className="mt-1 font-semibold">လှော်အိုး ဝန်ဆောင်မှုဘောင်ချာ</p>
