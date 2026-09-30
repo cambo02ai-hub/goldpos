@@ -53,6 +53,23 @@ export default function HlawOo() {
         `${row.customerName} ${row.note ?? ""}`.toLowerCase().includes(needle)
     );
   }, [query.data, search]);
+  const reportRows = query.data ?? [];
+  const reportTotal = reportRows.reduce(
+    (sum, row) => sum + Number(row.serviceFee || 0),
+    0
+  );
+  const dailyReport = useMemo(() => {
+    const grouped = new Map<string, { count: number; total: number }>();
+    for (const row of reportRows) {
+      const current = grouped.get(row.serviceDate) ?? { count: 0, total: 0 };
+      current.count += 1;
+      current.total += Number(row.serviceFee || 0);
+      grouped.set(row.serviceDate, current);
+    }
+    return Array.from(grouped.entries()).sort((a, b) =>
+      b[0].localeCompare(a[0])
+    );
+  }, [reportRows]);
   const no2Preview = calculateNo2(form);
   const createMutation = trpc.shopBook.createHlawOo.useMutation({
     onSuccess: () => {
@@ -326,6 +343,94 @@ export default function HlawOo() {
             </div>
           </CardContent>
         </Card>
+        <Card className="rounded-2xl border-[#dfe8e2] shadow-sm print:shadow-none">
+          <CardHeader className="gap-3 border-b border-[#edf1ee] bg-white px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+            <div>
+              <CardTitle className="text-xl">လှော်ခ ဝင်ငွေ Report</CardTitle>
+              <p className="mt-1 text-sm text-[#78867e]">
+                {from} မှ {to} အထိ · လှော်ခပေါင်းချုပ်
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2 print:hidden">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const date = today();
+                  setFrom(date);
+                  setTo(date);
+                }}
+              >
+                ယနေ့
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setFrom(monthStart());
+                  setTo(today());
+                }}
+              >
+                ယခုလ
+              </Button>
+              <Button type="button" size="sm" onClick={() => window.print()}>
+                <Printer className="mr-1.5 h-4 w-4" /> Report Print
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4 px-4 py-5 sm:px-6">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              <ReportMetric
+                label="လှော်ခ စုစုပေါင်း"
+                value={`${formatNumber(reportTotal)} ကျပ်`}
+              />
+              <ReportMetric
+                label="ဝန်ဆောင်မှုစာရင်း"
+                value={`${formatNumber(reportRows.length)} ကြောင်း`}
+              />
+              <ReportMetric
+                label="ပျမ်းမျှလှော်ခ"
+                value={`${formatNumber(reportRows.length ? Math.round(reportTotal / reportRows.length) : 0)} ကျပ်`}
+              />
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[520px] text-sm">
+                <thead className="bg-[#f8faf8] text-left text-xs text-[#748079]">
+                  <tr>
+                    <th className="px-4 py-3">နေ့စွဲ</th>
+                    <th className="px-3 py-3 text-right">စာရင်းအရေအတွက်</th>
+                    <th className="px-4 py-3 text-right">လှော်ခပေါင်းချုပ်</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#edf1ee]">
+                  {dailyReport.map(([date, summary]) => (
+                    <tr key={date}>
+                      <td className="px-4 py-3">{date}</td>
+                      <td className="px-3 py-3 text-right">
+                        {formatNumber(summary.count)} ကြောင်း
+                      </td>
+                      <td className="px-4 py-3 text-right font-semibold">
+                        {formatNumber(summary.total)} ကျပ်
+                      </td>
+                    </tr>
+                  ))}
+                  {dailyReport.length === 0 && (
+                    <tr>
+                      <td
+                        colSpan={3}
+                        className="px-4 py-6 text-center text-[#89968d]"
+                      >
+                        Report စာရင်းမရှိပါ
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
         <HlawInvoiceDialog
           row={invoiceRow}
           onClose={() => setInvoiceRow(null)}
@@ -388,6 +493,15 @@ function WeightField({
         onChange={e => onChange(e.target.value)}
       />
     </Field>
+  );
+}
+
+function ReportMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-[#e5ebe7] bg-[#f8fbf9] p-3 sm:p-4">
+      <p className="text-xs font-semibold text-[#748079]">{label}</p>
+      <p className="mt-1 text-lg font-bold text-[#1f5e3a]">{value}</p>
+    </div>
   );
 }
 
