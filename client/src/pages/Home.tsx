@@ -496,7 +496,6 @@ function MobileTransaction({
 
 function InvoiceDialog({ row, onClose }: { row: any; onClose: () => void }) {
   const slipRef = useRef<HTMLDivElement>(null);
-  const printRef = useRef<HTMLDivElement>(null);
   const [exportingImage, setExportingImage] = useState(false);
   const [slipSize, setSlipSize] = useState<SlipSize>(() =>
     typeof window !== "undefined"
@@ -550,8 +549,8 @@ function InvoiceDialog({ row, onClose }: { row: any; onClose: () => void }) {
     /iPad|Macintosh/.test(navigator.userAgent) &&
     "ontouchend" in document;
   const printSlip = () => {
-    if (printRef.current) {
-      printSlipAsPdf(printRef.current, `goldpos-slip-${row.id}`);
+    if (slipRef.current) {
+      printSlipAsPdf(slipRef.current, `goldpos-slip-${row.id}`);
     }
   };
   const exportImage = async () => {
@@ -636,7 +635,6 @@ function InvoiceDialog({ row, onClose }: { row: any; onClose: () => void }) {
         </div>
         <div className="max-h-[68vh] overflow-auto bg-[#edf2ee] p-4 sm:p-8">
           <div
-            ref={printRef}
             className={`invoice-preview-paper mx-auto ${paperWidth} max-w-full bg-white shadow-md`}
             style={
               {
