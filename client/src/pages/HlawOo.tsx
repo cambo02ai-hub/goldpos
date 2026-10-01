@@ -661,39 +661,74 @@ function HlawInvoiceDialog({
         </div>
         <div
           ref={slipRef}
-          className={`invoice-print-area mx-auto my-5 bg-white p-5 text-sm text-[#17201d] ${slipSize === "58" ? "w-[58mm]" : "w-[80mm]"}`}
+          className={`invoice-print-area hlaw-slip mx-auto my-5 bg-white text-[#17201d] ${slipSize === "58" ? "w-[58mm] p-3" : "w-[80mm] p-5"}`}
           style={
             {
               "--slip-height": `${Math.min(500, Math.max(50, Number(customLength) || 180))}mm`,
             } as CSSProperties
           }
         >
-          <div className="text-center">
-            <p className="mt-1 font-semibold">လှော်အိုး ဝန်ဆောင်မှုဘောင်ချာ</p>
-            <p className="text-xs">{row.serviceDate}</p>
+          <div className="hlaw-slip-header text-center">
+            <div className="mx-auto mb-2 h-1 w-12 rounded-full bg-[#b7791f]" />
+            <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#9a6a20]">
+              HLAW OO SERVICE
+            </p>
+            <p className="mt-1 text-base font-extrabold tracking-tight">
+              လှော်အိုး ဝန်ဆောင်မှုဘောင်ချာ
+            </p>
+            <div className="mt-2 flex items-center justify-center gap-2 text-[11px] text-[#66756b]">
+              <span>{row.serviceDate}</span>
+              <span className="text-[#b8c2bb]">•</span>
+              <span>#{row.id}</span>
+            </div>
           </div>
-          <div className="my-3 border-t border-dashed border-[#9aa79f]" />
-          <SlipLine label="အမည်" value={row.customerName} />
-          <SlipLine
-            label="Hlaw"
-            value={weightText(row.hlawKyat, row.hlawPae, row.hlawYway)}
-          />
-          <SlipLine
-            label="Tin"
-            value={weightText(row.tinKyat, row.tinPae, row.tinHtwe)}
-          />
-          <SlipLine
-            label="Kyoot"
-            value={row.kyoot === null ? "—" : Number(row.kyoot).toFixed(2)}
-          />
-          <div className="my-3 border-t border-dashed border-[#9aa79f]" />
-          <SlipLine
-            label="လှော်ခ"
-            value={`${formatNumber(Number(row.serviceFee))} ကျပ်`}
-            strong
-          />
-          {row.note && <p className="mt-3 text-xs">မှတ်ချက်: {row.note}</p>}
-          <p className="mt-5 text-center text-xs">ကျေးဇူးတင်ပါသည်။</p>
+          <div className="my-4 border-t border-dashed border-[#c8d0ca]" />
+          <div className="rounded-xl border border-[#dce7df] bg-[#f8fbf9] p-3">
+            <SlipLine label="အမည်" value={row.customerName} />
+          </div>
+          <div className="mt-3 rounded-xl border border-[#e3e8e4] bg-white p-3 shadow-[0_2px_8px_rgba(39,96,68,0.06)]">
+            <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.16em] text-[#9a6a20]">
+              Weight details
+            </p>
+            <SlipLine
+              label="Hlaw"
+              value={weightText(row.hlawKyat, row.hlawPae, row.hlawYway)}
+            />
+            <SlipLine
+              label="Tin"
+              value={weightText(row.tinKyat, row.tinPae, row.tinHtwe)}
+            />
+            <div className="my-2 border-t border-dashed border-[#d8e1da]" />
+            <SlipLine
+              label="Kyoot"
+              value={row.kyoot === null ? "—" : Number(row.kyoot).toFixed(2)}
+              strong
+            />
+          </div>
+          <div className="mt-3 rounded-xl bg-[#276044] px-3 py-3 text-white">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#c9e5d1]">
+              Service fee
+            </p>
+            <p className="mt-1 text-right text-lg font-extrabold tracking-tight">
+              {formatNumber(Number(row.serviceFee))}{" "}
+              <span className="text-sm font-semibold">ကျပ်</span>
+            </p>
+          </div>
+          {row.note && (
+            <div className="mt-3 rounded-lg border-l-2 border-[#b7791f] bg-[#fffaf1] px-3 py-2 text-[11px] text-[#53645b]">
+              <span className="font-bold text-[#7e5a1c]">မှတ်ချက်</span> ·{" "}
+              {row.note}
+            </div>
+          )}
+          <div className="mt-5 text-center">
+            <div className="mx-auto mb-2 h-px w-16 bg-[#d8e1da]" />
+            <p className="text-[11px] font-semibold text-[#53645b]">
+              ကျေးဇူးတင်ပါသည်။
+            </p>
+            <p className="mt-1 text-[9px] tracking-[0.12em] text-[#a1ada5]">
+              GOLDPOS
+            </p>
+          </div>
         </div>
         <div className="space-y-3 border-t border-[#edf1ee] bg-white px-5 py-4 no-print">
           <PrinterAppGuide
@@ -758,10 +793,10 @@ function SlipLine({
 }) {
   return (
     <div
-      className={`flex justify-between gap-2 py-1 ${strong ? "font-bold" : ""}`}
+      className={`flex items-start justify-between gap-3 py-1 text-[11px] leading-5 ${strong ? "font-extrabold text-[#276044]" : ""}`}
     >
-      <span>{label}</span>
-      <span className="text-right">{value}</span>
+      <span className="shrink-0 font-semibold text-[#6b786f]">{label}</span>
+      <span className="text-right font-semibold text-[#25322b]">{value}</span>
     </div>
   );
 }
