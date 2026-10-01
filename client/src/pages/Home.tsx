@@ -29,7 +29,7 @@ import { useEffect, useMemo, useState } from "react";
 
 type FilterType = "all" | "sell" | "buy";
 type ViewMode = "today" | "all";
-type SlipSize = "58" | "80";
+type SlipSize = "58" | "80" | "custom";
 const formatNumber = (value: number, maximumFractionDigits = 0) =>
   new Intl.NumberFormat("en-US", { maximumFractionDigits }).format(value || 0);
 const formatDate = (date: string) =>
@@ -494,26 +494,38 @@ function MobileTransaction({
 
 function InvoiceDialog({ row, onClose }: { row: any; onClose: () => void }) {
   const [slipSize, setSlipSize] = useState<SlipSize>(() =>
-    typeof window !== "undefined" &&
-    window.localStorage.getItem("gold-slip-size") === "80"
-      ? "80"
+    typeof window !== "undefined"
+      ? (window.localStorage.getItem("gold-slip-size") as SlipSize) || "58"
       : "58"
+  );
+  const [customLength, setCustomLength] = useState(() =>
+    typeof window !== "undefined"
+      ? window.localStorage.getItem("gold-slip-length") || "180"
+      : "180"
   );
   const [previewMode, setPreviewMode] = useState(true);
   useEffect(() => {
     if (!row) return;
+    const length = Math.min(500, Math.max(50, Number(customLength) || 180));
+    const width = slipSize === "80" ? 80 : 58;
     window.localStorage.setItem("gold-slip-size", slipSize);
-    document.documentElement.style.setProperty("--slip-width", `${slipSize}mm`);
+    window.localStorage.setItem("gold-slip-length", String(length));
+    document.documentElement.style.setProperty("--slip-width", `${width}mm`);
     const printStyle = document.createElement("style");
     printStyle.dataset.slipPrintSize = "true";
-    const printHeight = slipSize === "58" ? "140mm" : "160mm";
-    printStyle.textContent = `@media print { @page { size: ${slipSize}mm ${printHeight}; margin: 0; } }`;
+    const printHeight =
+      slipSize === "custom"
+        ? `${length}mm`
+        : slipSize === "58"
+          ? "140mm"
+          : "160mm";
+    printStyle.textContent = `@media print { @page { size: ${width}mm ${printHeight}; margin: 0; } }`;
     document.head.appendChild(printStyle);
     return () => {
       printStyle.remove();
       document.documentElement.style.removeProperty("--slip-width");
     };
-  }, [row, slipSize]);
+  }, [row, slipSize, customLength]);
   if (!row) return null;
   const typeLabel =
     row.transactionType === "sell" ? "အရောင်း ဘောင်ချာ" : "အဝယ် ဘောင်ချာ";
@@ -554,7 +566,24 @@ function InvoiceDialog({ row, onClose }: { row: any; onClose: () => void }) {
               >
                 <option value="58">58mm</option>
                 <option value="80">80mm</option>
+                <option value="custom">စိတ်ကြိုက်</option>
               </select>
+              {slipSize === "custom" && (
+                <label className="flex items-center gap-1 text-xs font-semibold text-[#53645b]">
+                  အရှည်
+                  <Input
+                    className="h-9 w-20 bg-white"
+                    type="number"
+                    min="50"
+                    max="500"
+                    step="1"
+                    value={customLength}
+                    onChange={e => setCustomLength(e.target.value)}
+                    aria-label="အရောင်းအဝယ် Slip အရှည် (mm)"
+                  />
+                  mm
+                </label>
+              )}
               <Button
                 type="button"
                 variant={previewMode ? "default" : "outline"}
@@ -575,7 +604,16 @@ function InvoiceDialog({ row, onClose }: { row: any; onClose: () => void }) {
         <div className="max-h-[68vh] overflow-auto bg-[#edf2ee] p-4 sm:p-8">
           <div
             className={`invoice-preview-paper mx-auto ${paperWidth} max-w-full bg-white shadow-md`}
-            style={{ "--slip-width": `${slipSize}mm` } as React.CSSProperties}
+            style={
+              {
+                "--slip-width": `${slipSize === "80" ? 80 : 58}mm`,
+                ...(slipSize === "custom"
+                  ? {
+                      minHeight: `${Math.min(500, Math.max(50, Number(customLength) || 180))}mm`,
+                    }
+                  : {}),
+              } as React.CSSProperties
+            }
           >
             <div className="invoice-print-area" data-slip-size={slipSize}>
               <DialogHeader className="border-b border-[#e5ece7] bg-[#f7fbf8] px-4 py-4">
@@ -629,7 +667,10 @@ function InvoiceDialog({ row, onClose }: { row: any; onClose: () => void }) {
         </div>
         <div className="flex items-center justify-between gap-2 border-t border-[#edf1ee] bg-white px-5 py-4 no-print">
           <div className="text-xs text-[#78867e]">
-            ရွေးထားသည်: <strong className="text-[#25322b]">{slipSize}mm</strong>
+            ရွေးထားသည်:{" "}
+            <strong className="text-[#25322b]">
+              {slipSize === "custom" ? `${customLength}mm` : `${slipSize}mm`}
+            </strong>
           </div>
           <div className="flex gap-2">
             <Button variant="outline" onClick={onClose}>

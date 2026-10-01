@@ -33,6 +33,12 @@ import {
 } from "./db";
 import { authenticateLocalUser } from "./localAuth";
 import { sdk } from "./_core/sdk";
+import {
+  confirmAgentAction,
+  getAgentMessages,
+  sendAgentMessage,
+  startAgentTask,
+} from "./manusAgent";
 
 const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const transactionSchema = z.object({
@@ -134,6 +140,29 @@ const adminOnlyProcedure = protectedProcedure.use(({ ctx, next }) => {
 
 export const appRouter = router({
   system: systemRouter,
+  agent: router({
+    start: adminOnlyProcedure
+      .input(z.object({ message: z.string().trim().min(1).max(4000) }))
+      .mutation(({ input, ctx }) => startAgentTask(ctx.user.id, input.message)),
+    send: adminOnlyProcedure
+      .input(z.object({ message: z.string().trim().min(1).max(4000) }))
+      .mutation(({ input, ctx }) =>
+        sendAgentMessage(ctx.user.id, input.message)
+      ),
+    messages: adminOnlyProcedure.query(({ ctx }) =>
+      getAgentMessages(ctx.user.id)
+    ),
+    confirm: adminOnlyProcedure
+      .input(
+        z.object({
+          eventId: z.string().min(1),
+          input: z.record(z.string(), z.unknown()),
+        })
+      )
+      .mutation(({ input, ctx }) =>
+        confirmAgentAction(ctx.user.id, input.eventId, input.input)
+      ),
+  }),
   auth: router({
     me: publicProcedure.query(opts => {
       if (!opts.ctx.user) return null;
