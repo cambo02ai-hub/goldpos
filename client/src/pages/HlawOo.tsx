@@ -670,9 +670,6 @@ function HlawInvoiceDialog({
         >
           <div className="hlaw-slip-header text-center">
             <div className="mx-auto mb-2 h-1 w-12 rounded-full bg-[#b7791f]" />
-            <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#9a6a20]">
-              HLAW OO SERVICE
-            </p>
             <p className="mt-1 text-base font-extrabold tracking-tight">
               လှော်အိုး ဝန်ဆောင်မှုဘောင်ချာ
             </p>
@@ -724,9 +721,6 @@ function HlawInvoiceDialog({
             <div className="mx-auto mb-2 h-px w-16 bg-[#d8e1da]" />
             <p className="text-[11px] font-semibold text-[#53645b]">
               ကျေးဇူးတင်ပါသည်။
-            </p>
-            <p className="mt-1 text-[9px] tracking-[0.12em] text-[#a1ada5]">
-              GOLDPOS
             </p>
           </div>
         </div>
