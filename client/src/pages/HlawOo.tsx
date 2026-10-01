@@ -686,7 +686,10 @@ function HlawInvoiceDialog({
           <p className="mt-5 text-center text-xs">ကျေးဇူးတင်ပါသည်။</p>
         </div>
         <div className="space-y-3 border-t border-[#edf1ee] bg-white px-5 py-4 no-print">
-          <PrinterAppGuide />
+          <PrinterAppGuide
+            elementRef={slipRef}
+            widthMm={slipSize === "80" ? 80 : 58}
+          />
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
             {isAppleTablet && (
               <p className="mr-auto self-center text-xs text-[#2c6e49]">

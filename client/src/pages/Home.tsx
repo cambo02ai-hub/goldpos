@@ -743,7 +743,10 @@ function InvoiceDialog({ row, onClose }: { row: any; onClose: () => void }) {
           </div>
         </div>
         <div className="space-y-3 border-t border-[#edf1ee] bg-white px-5 py-4 no-print">
-          <PrinterAppGuide />
+          <PrinterAppGuide
+            elementRef={slipRef}
+            widthMm={slipSize === "80" ? 80 : 58}
+          />
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="text-xs text-[#78867e]">
               ရွေးထားသည်:{" "}

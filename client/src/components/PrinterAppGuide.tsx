@@ -1,6 +1,9 @@
 import { Button } from "@/components/ui/button";
-import { ExternalLink, Share2, Wifi } from "lucide-react";
+import { printSlipToBluetooth } from "@/lib/slip-export";
+import { Bluetooth, ExternalLink, Monitor, Share2, Wifi } from "lucide-react";
 import { useEffect, useState } from "react";
+
+type SlipElementRef = { current: HTMLElement | null };
 
 const printerApps = [
   {
@@ -33,12 +36,19 @@ const printerApps = [
   },
 ] as const;
 
-export function PrinterAppGuide() {
+export function PrinterAppGuide({
+  elementRef,
+  widthMm = 58,
+}: {
+  elementRef?: SlipElementRef;
+  widthMm?: number;
+}) {
   const [selectedId, setSelectedId] = useState(() =>
     typeof window === "undefined"
       ? printerApps[0].id
       : window.localStorage.getItem("goldpos-printer-app") || printerApps[0].id
   );
+  const [connecting, setConnecting] = useState(false);
   const selected =
     printerApps.find(app => app.id === selectedId) || printerApps[0];
 
@@ -46,23 +56,72 @@ export function PrinterAppGuide() {
     window.localStorage.setItem("goldpos-printer-app", selected.id);
   }, [selected.id]);
 
+  const directBluetoothPrint = async () => {
+    if (!elementRef?.current) {
+      window.alert("Slip ကို အရင်ဖွင့်ပြီး ထပ်မံစမ်းပါ။");
+      return;
+    }
+    setConnecting(true);
+    try {
+      const printerName = await printSlipToBluetooth(
+        elementRef.current,
+        widthMm
+      );
+      window.alert(`${printerName} သို့ Slip ထုတ်ပြီးပါပြီ။`);
+    } catch (error) {
+      if ((error as DOMException)?.name !== "NotFoundError") {
+        window.alert(
+          `${error instanceof Error ? error.message : "Bluetooth print မအောင်မြင်ပါ"}\n\nClassic Bluetooth printer ဖြစ်ပါက Windows မှာ PDF/Image ကို download လုပ်ပြီး printer app သို့မဟုတ် Windows printer driver မှတစ်ဆင့် ထုတ်ပါ။`
+        );
+      }
+    } finally {
+      setConnecting(false);
+    }
+  };
+
   return (
     <section className="no-print rounded-xl border border-[#d7e7dc] bg-[#f5fbf7] p-3 text-xs text-[#53645b]">
       <div className="flex items-start gap-2">
         <Share2 className="mt-0.5 h-4 w-4 shrink-0 text-[#276044]" />
         <div className="min-w-0 flex-1">
           <p className="font-bold text-[#1f5e3a]">
-            iPad Bluetooth Printer Workflow
+            Bluetooth POS Printer Workflow
           </p>
           <p className="mt-1">
-            Image / Share ကိုနှိပ်ပြီး ရွေးထားသော printer app ထဲသို့ ပို့ကာ
-            Bluetooth ဖြင့် print ထုတ်ပါ။
+            iPad တွင် Image / Share သုံးပါ။ Windows Chrome တွင် BLE printer
+            ဖြစ်ပါက တိုက်ရိုက်ချိတ်နိုင်ပြီး Classic Bluetooth printer ဖြစ်ပါက
+            Exact PDF/Image ကို download လုပ်ပြီး Windows printer app/driver
+            မှတစ်ဆင့် ထုတ်ပါ။
           </p>
         </div>
       </div>
+
+      <div className="mt-3 rounded-lg border border-[#cfe0d4] bg-white p-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <Monitor className="h-4 w-4 text-[#276044]" />
+          <p className="font-bold text-[#1f5e3a]">
+            Windows Chrome — Direct BLE Print
+          </p>
+          <Button
+            type="button"
+            size="sm"
+            onClick={directBluetoothPrint}
+            disabled={connecting}
+            className="ml-auto bg-[#276044] text-white hover:bg-[#1f5038]"
+          >
+            <Bluetooth className="mr-1.5 h-3.5 w-3.5" />
+            {connecting ? "ချိတ်ဆက်နေသည်…" : "Bluetooth ချိတ်ပြီး Print"}
+          </Button>
+        </div>
+        <p className="mt-2 text-[11px] text-[#6d7c73]">
+          BLE ESC/POS printer များအတွက်သာ Chrome မှ တိုက်ရိုက်အလုပ်လုပ်ပါမည်။
+          Browser က printer ရွေးရန် permission ပြပါက printer ကိုရွေးပါ။
+        </p>
+      </div>
+
       <div className="mt-3 flex flex-wrap items-center gap-2">
         <label htmlFor="printer-app" className="font-semibold text-[#53645b]">
-          Printer app
+          iPad Printer app
         </label>
         <select
           id="printer-app"
@@ -93,23 +152,23 @@ export function PrinterAppGuide() {
       <div className="mt-3 grid gap-2 sm:grid-cols-3">
         <WorkflowStep
           number="1"
-          title="Image / Share"
-          detail="Slip ကို PNG အဖြစ် ထုတ်ပါ"
+          title="Exact PDF / Image"
+          detail="Slip ကို တစ်မျက်နှာတည်း ဖန်တီးပါ"
         />
         <WorkflowStep
           number="2"
-          title="Open in app"
-          detail="Printer app ကို ရွေးပါ"
+          title="Connect printer"
+          detail="BLE direct သို့မဟုတ် Windows driver/app ကို သုံးပါ"
         />
         <WorkflowStep
           number="3"
-          title="Bluetooth Print"
-          detail="Printer ရွေးပြီး ထုတ်ပါ"
+          title="Actual size"
+          detail="100% / No scaling ဖြင့် ထုတ်ပါ"
         />
       </div>
       <p className="mt-2 flex items-center gap-1 text-[11px] text-[#6d7c73]">
-        <Wifi className="h-3 w-3" /> Printer model တွင် iPad/iOS နှင့် ESC/POS
-        image support ရှိမရှိ စစ်ပါ။
+        <Wifi className="h-3 w-3" /> Windows မှာ Classic Bluetooth POS printer
+        များအတွက် printer driver သို့မဟုတ် Print Assistant app လိုအပ်နိုင်ပါသည်။
       </p>
     </section>
   );
