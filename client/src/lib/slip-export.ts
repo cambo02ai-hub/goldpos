@@ -217,6 +217,16 @@ export async function exportSlipImage(
   return "downloaded" as const;
 }
 
+export async function saveSlipImage(element: HTMLElement, filename: string) {
+  const canvas = await renderSlipCanvas(element);
+  const blob = await new Promise<Blob | null>(resolve =>
+    canvas.toBlob(resolve, "image/png")
+  );
+  if (!blob) throw new Error("Slip image ဖန်တီး၍ မရပါ");
+  downloadBlob(blob, filename);
+  return "saved" as const;
+}
+
 export async function exportSlipPdf(
   element: HTMLElement,
   filename: string,

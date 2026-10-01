@@ -88,10 +88,11 @@ export function PrinterAppGuide({
             Bluetooth POS Printer Workflow
           </p>
           <p className="mt-1">
-            iPad တွင် Image / Share သုံးပါ။ Windows Chrome တွင် BLE printer
-            ဖြစ်ပါက တိုက်ရိုက်ချိတ်နိုင်ပြီး Classic Bluetooth printer ဖြစ်ပါက
-            Exact PDF/Image ကို download လုပ်ပြီး Windows printer app/driver
-            မှတစ်ဆင့် ထုတ်ပါ။
+            iPad တွင် Image / Share သုံးပါ။ Printer app မပေါ်ပါက Save PNG ဖြင့်
+            Files ထဲသိမ်းပြီး printer app ထဲမှ Import Image လုပ်ပါ။ Windows
+            Chrome တွင် BLE printer ဖြစ်ပါက တိုက်ရိုက်ချိတ်နိုင်ပြီး Classic
+            Bluetooth printer ဖြစ်ပါက Exact PDF/Image ကို download လုပ်ပြီး
+            Windows printer app/driver မှတစ်ဆင့် ထုတ်ပါ။
           </p>
         </div>
       </div>
@@ -152,8 +153,8 @@ export function PrinterAppGuide({
       <div className="mt-3 grid gap-2 sm:grid-cols-3">
         <WorkflowStep
           number="1"
-          title="Exact PDF / Image"
-          detail="Slip ကို တစ်မျက်နှာတည်း ဖန်တီးပါ"
+          title="Image / Save PNG"
+          detail="Share မပေါ်ပါက PNG ကို Files ထဲသိမ်းပါ"
         />
         <WorkflowStep
           number="2"

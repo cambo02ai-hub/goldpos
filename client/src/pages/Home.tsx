@@ -17,6 +17,7 @@ import {
   exportSlipImage,
   exportSlipPdf,
   printSlipAsPdf,
+  saveSlipImage,
 } from "@/lib/slip-export";
 import { goldWeightParts } from "@shared/shop-calculations";
 import {
@@ -501,6 +502,7 @@ function MobileTransaction({
 function InvoiceDialog({ row, onClose }: { row: any; onClose: () => void }) {
   const slipRef = useRef<HTMLDivElement>(null);
   const [exportingImage, setExportingImage] = useState(false);
+  const [savingImage, setSavingImage] = useState(false);
   const [exportingPdf, setExportingPdf] = useState(false);
   const [slipSize, setSlipSize] = useState<SlipSize>(() =>
     typeof window !== "undefined"
@@ -573,6 +575,20 @@ function InvoiceDialog({ row, onClose }: { row: any; onClose: () => void }) {
       }
     } finally {
       setExportingImage(false);
+    }
+  };
+  const saveImage = async () => {
+    if (!slipRef.current) return;
+    setSavingImage(true);
+    try {
+      await saveSlipImage(slipRef.current, `goldpos-slip-${row.id}.png`);
+      window.alert(
+        "PNG သိမ်းပြီးပါပြီ။ Files မှ printer app သို့ Share လုပ်ပါ။"
+      );
+    } catch {
+      window.alert("Slip image သိမ်း၍ မရပါ။ ထပ်မံစမ်းကြည့်ပါ။");
+    } finally {
+      setSavingImage(false);
     }
   };
   const exportPdf = async () => {
@@ -783,6 +799,15 @@ function InvoiceDialog({ row, onClose }: { row: any; onClose: () => void }) {
               >
                 <FileDown className="mr-2 h-4 w-4" />
                 {exportingImage ? "ပြင်ဆင်နေသည်…" : "Image / Share"}
+              </Button>
+              <Button
+                variant="outline"
+                disabled={savingImage}
+                onClick={saveImage}
+                className="border-[#bcd5c3] text-[#276044]"
+              >
+                <FileDown className="mr-2 h-4 w-4" />
+                {savingImage ? "သိမ်းနေသည်…" : "Save PNG"}
               </Button>
             </div>
           </div>
