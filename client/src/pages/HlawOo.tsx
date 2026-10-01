@@ -1,16 +1,20 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  hlawSlipDimensions,
+  parseHlawSlipSize,
+  type HlawSlipSize,
+} from "@/lib/hlawSlip";
 import { trpc } from "@/lib/trpc";
 import { format } from "date-fns";
 import { FileText, Printer, Search, Trash2, X } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
-type SlipSize = "58" | "80" | "custom";
 const today = () => new Date().toISOString().slice(0, 10);
 const monthStart = () => `${today().slice(0, 8)}01`;
 const formatNumber = (value: number, maximumFractionDigits = 0) =>
@@ -127,7 +131,7 @@ export default function HlawOo() {
           </h1>
           <p className="mt-1 text-sm text-[#68756d]">
             ဆိုင်စာရင်းအုပ်နှင့် သီးခြားစာရင်း။ မှတ်တမ်းတစ်ကြောင်းစီအတွက်
-            ဘောင်ချာ slip ထုတ်နိုင်ပါသည်။
+            Invoice ထုတ်နိုင်ပါသည်။
           </p>
         </header>
 
@@ -310,7 +314,7 @@ export default function HlawOo() {
                             className="text-[#276044]"
                           >
                             <FileText className="mr-1.5 h-4 w-4" />
-                            Slip
+                            Invoice
                           </Button>
                           {user?.role === "admin" && (
                             <Button
@@ -512,43 +516,65 @@ function HlawInvoiceDialog({
   row: any;
   onClose: () => void;
 }) {
-  const [slipSize, setSlipSize] = useState<SlipSize>(() =>
+  const [slipSize, setSlipSize] = useState<HlawSlipSize>(() =>
     typeof window !== "undefined"
-      ? (window.localStorage.getItem("gold-hlaw-slip-size") as SlipSize) || "58"
+      ? parseHlawSlipSize(window.localStorage.getItem("gold-hlaw-slip-size"))
       : "58"
   );
-  const [customLength, setCustomLength] = useState(() =>
+  const [customWidth, setCustomWidth] = useState(() =>
+    typeof window !== "undefined"
+      ? window.localStorage.getItem("gold-hlaw-slip-width") || "58"
+      : "58"
+  );
+  const [paperLength, setPaperLength] = useState(() =>
     typeof window !== "undefined"
       ? window.localStorage.getItem("gold-hlaw-slip-length") || "180"
       : "180"
   );
-  if (!row) return null;
-  const print = () => {
-    const length = Math.min(500, Math.max(50, Number(customLength) || 180));
+  const { width, length } = hlawSlipDimensions(
+    slipSize,
+    customWidth,
+    paperLength
+  );
+  useEffect(() => {
+    if (!row) return;
     window.localStorage.setItem("gold-hlaw-slip-size", slipSize);
+    if (slipSize === "custom") {
+      window.localStorage.setItem("gold-hlaw-slip-width", String(width));
+    }
     window.localStorage.setItem("gold-hlaw-slip-length", String(length));
+    document.documentElement.style.setProperty(
+      "--hlaw-slip-width",
+      `${width}mm`
+    );
     const style = document.createElement("style");
-    const width = slipSize === "80" ? 80 : 58;
-    style.textContent = `@media print { @page { size: ${width}mm ${slipSize === "custom" ? length : 180}mm; margin: 0; } }`;
+    style.dataset.hlawSlipPrintSize = "true";
+    style.textContent = `@media print { @page { size: ${width}mm ${length}mm; margin: 0; } }`;
     document.head.appendChild(style);
-    window.print();
-    window.setTimeout(() => style.remove(), 1000);
-  };
+    return () => {
+      style.remove();
+      document.documentElement.style.removeProperty("--hlaw-slip-width");
+    };
+  }, [row, slipSize, width, length]);
+  if (!row) return null;
   return (
     <Dialog open={Boolean(row)} onOpenChange={open => !open && onClose()}>
       <DialogContent className="max-w-[720px] overflow-hidden p-0">
-        <div className="flex items-center justify-between border-b border-[#e5ece7] bg-[#f7fbf8] px-5 py-4 no-print">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#e5ece7] bg-[#f7fbf8] px-5 py-4 no-print">
           <div>
-            <p className="font-bold text-[#1e3025]">လှော်အိုး ဘောင်ချာ</p>
+            <DialogTitle className="font-bold text-[#1e3025]">
+              Invoice
+            </DialogTitle>
             <p className="text-xs text-[#78867e]">
-              Slip ကို ကြိုကြည့်ပြီး print ထုတ်ပါ
+              Invoice ကို ကြိုကြည့်ပြီး print ထုတ်ပါ
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <select
               value={slipSize}
-              onChange={e => setSlipSize(e.target.value as SlipSize)}
+              onChange={e => setSlipSize(e.target.value as HlawSlipSize)}
               className="h-9 rounded-md border bg-white px-2 text-sm"
+              aria-label="Invoice စာရွက်အကျယ်"
             >
               <option value="58">58mm</option>
               <option value="80">80mm</option>
@@ -556,72 +582,86 @@ function HlawInvoiceDialog({
             </select>
             {slipSize === "custom" && (
               <label className="flex items-center gap-1 text-xs text-[#53645b]">
-                အရှည်
+                အကျယ်
                 <Input
                   className="h-9 w-20 bg-white"
                   type="number"
-                  min="50"
-                  max="500"
+                  min="40"
+                  max="100"
                   step="1"
-                  value={customLength}
-                  onChange={e => setCustomLength(e.target.value)}
-                  aria-label="Slip အရှည် (mm)"
+                  value={customWidth}
+                  onChange={e => setCustomWidth(e.target.value)}
+                  onBlur={() => setCustomWidth(String(width))}
+                  aria-label="Invoice အကျယ် (mm)"
                 />
                 mm
               </label>
             )}
+            <label className="flex items-center gap-1 text-xs text-[#53645b]">
+              အရှည်
+              <Input
+                className="h-9 w-20 bg-white"
+                type="number"
+                min="50"
+                max="500"
+                step="1"
+                value={paperLength}
+                onChange={e => setPaperLength(e.target.value)}
+                onBlur={() => setPaperLength(String(length))}
+                aria-label="Invoice အရှည် (mm)"
+              />
+              mm
+            </label>
             <Button variant="ghost" size="icon" onClick={onClose}>
               <X className="h-4 w-4" />
             </Button>
           </div>
         </div>
-        <div
-          className={`mx-auto my-5 bg-white p-5 text-sm text-[#17201d] ${slipSize === "58" ? "w-[58mm]" : "w-[80mm]"}`}
-          style={
-            slipSize === "custom"
-              ? {
-                  minHeight: `${Math.min(500, Math.max(50, Number(customLength) || 180))}mm`,
-                }
-              : undefined
-          }
-        >
-          <div className="text-center">
-            <p className="mt-1 font-semibold">လှော်အိုး ဝန်ဆောင်မှုဘောင်ချာ</p>
-            <p className="text-xs">{row.serviceDate}</p>
+        <div className="max-h-[68vh] overflow-auto bg-[#edf2ee] p-3 sm:p-6">
+          <div
+            className="hlaw-invoice-print-area mx-auto bg-white px-4 py-5 text-[15px] leading-[1.55] text-[#17201d] [overflow-wrap:anywhere]"
+            style={{ width: `${width}mm`, minHeight: `${length}mm` }}
+          >
+            <div className="text-center">
+              <p className="mt-1 text-base font-bold">Invoice</p>
+              <p className="text-[13px]">{row.serviceDate}</p>
+            </div>
+            <div className="my-3 border-t border-dashed border-[#9aa79f]" />
+            <SlipLine label="အမည်" value={row.customerName} />
+            <SlipLine
+              label="Hlaw"
+              value={weightText(row.hlawKyat, row.hlawPae, row.hlawYway)}
+            />
+            <SlipLine
+              label="No.2"
+              value={weightText(row.no2Kyat, row.no2Pae, row.no2Yway)}
+            />
+            <SlipLine
+              label="Tin"
+              value={weightText(row.tinKyat, row.tinPae, row.tinHtwe)}
+            />
+            <SlipLine
+              label="Kyoot"
+              value={row.kyoot === null ? "—" : Number(row.kyoot).toFixed(2)}
+            />
+            <div className="my-3 border-t border-dashed border-[#9aa79f]" />
+            <SlipLine
+              label="လှော်ခ"
+              value={`${formatNumber(Number(row.serviceFee))} ကျပ်`}
+              strong
+            />
+            {row.note && (
+              <p className="mt-3 text-[13px]">မှတ်ချက်: {row.note}</p>
+            )}
+            <p className="mt-5 text-center text-[13px]">ကျေးဇူးတင်ပါသည်။</p>
           </div>
-          <div className="my-3 border-t border-dashed border-[#9aa79f]" />
-          <SlipLine label="အမည်" value={row.customerName} />
-          <SlipLine
-            label="Hlaw"
-            value={weightText(row.hlawKyat, row.hlawPae, row.hlawYway)}
-          />
-          <SlipLine
-            label="No.2"
-            value={weightText(row.no2Kyat, row.no2Pae, row.no2Yway)}
-          />
-          <SlipLine
-            label="Tin"
-            value={weightText(row.tinKyat, row.tinPae, row.tinHtwe)}
-          />
-          <SlipLine
-            label="Kyoot"
-            value={row.kyoot === null ? "—" : Number(row.kyoot).toFixed(2)}
-          />
-          <div className="my-3 border-t border-dashed border-[#9aa79f]" />
-          <SlipLine
-            label="လှော်ခ"
-            value={`${formatNumber(Number(row.serviceFee))} ကျပ်`}
-            strong
-          />
-          {row.note && <p className="mt-3 text-xs">မှတ်ချက်: {row.note}</p>}
-          <p className="mt-5 text-center text-xs">ကျေးဇူးတင်ပါသည်။</p>
         </div>
         <div className="flex justify-end gap-2 border-t border-[#edf1ee] bg-white px-5 py-4 no-print">
           <Button variant="outline" onClick={onClose}>
             ပိတ်မည်
           </Button>
           <Button
-            onClick={print}
+            onClick={() => window.print()}
             className="bg-[#276044] text-white hover:bg-[#1f5038]"
           >
             <Printer className="mr-2 h-4 w-4" />
