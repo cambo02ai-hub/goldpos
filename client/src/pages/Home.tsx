@@ -39,7 +39,7 @@ const formatDate = (date: string) =>
     year: "numeric",
   });
 const formatGoldWeight = (weight: number) => {
-  const parts = goldWeightParts(Math.max(0, weight));
+  const parts = goldWeightParts(weight);
   return `${formatNumber(parts.kyat)} ကျပ် ${formatNumber(parts.pae)} ပဲ ${formatNumber(parts.yway, 1)} ရွေး`;
 };
 
@@ -187,8 +187,15 @@ export default function Home() {
                   value={formatGoldWeight(
                     dailyQuery.data?.stockBalance?.openingWeight ?? 0
                   )}
-                  hint="ယခင်နေ့ပိတ်လက်ကျန်မှ"
+                  hint={
+                    dailyQuery.data?.openingSource === "previous_closing"
+                      ? "ယခင်နေ့ပိတ်လက်ကျန်မှ"
+                      : "သတ်မှတ်ထားသော အဖွင့်လက်ကျန်မှ"
+                  }
                   tone="blue"
+                  negative={
+                    (dailyQuery.data?.stockBalance?.openingWeight ?? 0) < 0
+                  }
                 />
                 <StockMetric
                   label="ယနေ့ဝယ်"
@@ -211,10 +218,29 @@ export default function Home() {
                   value={formatGoldWeight(
                     dailyQuery.data?.stockBalance?.expectedClosingWeight ?? 0
                   )}
-                  hint="အလိုအလျောက်တွက်ချက်မှု"
+                  hint={
+                    (dailyQuery.data?.stockBalance?.expectedClosingWeight ??
+                      0) < 0
+                      ? "အနုတ်လက်ကျန် — စာရင်းပြန်စစ်ရန်"
+                      : "အလိုအလျောက်တွက်ချက်မှု"
+                  }
                   tone="purple"
+                  negative={
+                    (dailyQuery.data?.stockBalance?.expectedClosingWeight ??
+                      0) < 0
+                  }
                 />
               </div>
+            )}
+            {(dailyQuery.data?.stockBalance?.expectedClosingWeight ?? 0) <
+              0 && (
+              <p
+                role="alert"
+                className="mt-4 rounded-lg border border-red-300 bg-red-50 p-3 text-sm font-semibold text-red-800"
+              >
+                သတိ: မျှော်မှန်းရွှေလက်ကျန် အနုတ်ဖြစ်နေပါသည်။ အဖွင့်လက်ကျန်နှင့်
+                ဝယ်/ရောင်းစာရင်းကို ပြန်စစ်ပါ။
+              </p>
             )}
             {dailyQuery.data?.closing && (
               <p className="mt-4 rounded-lg border border-[#e5ebe7] bg-[#f8fbf9] p-3 text-sm text-[#53645b]">
@@ -731,11 +757,13 @@ function StockMetric({
   value,
   hint,
   tone,
+  negative = false,
 }: {
   label: string;
   value: string;
   hint: string;
   tone: "green" | "orange" | "blue" | "purple";
+  negative?: boolean;
 }) {
   const tones = {
     green: "bg-[#e9f5ed] text-[#286442]",
@@ -744,14 +772,22 @@ function StockMetric({
     purple: "bg-[#f1edfa] text-[#7055a2]",
   };
   return (
-    <div className="rounded-xl border border-[#e5ebe7] bg-white p-3 shadow-sm sm:p-4">
+    <div
+      className={`rounded-xl border p-3 shadow-sm sm:p-4 ${negative ? "border-red-300 bg-red-50" : "border-[#e5ebe7] bg-white"}`}
+    >
       <p className="text-xs font-semibold text-[#748079]">{label}</p>
-      <p className="mt-1 text-base font-bold leading-6 text-[#17201d] sm:text-lg">
+      <p
+        className={`mt-1 text-base font-bold leading-6 sm:text-lg ${negative ? "text-red-800" : "text-[#17201d]"}`}
+      >
         {value}
       </p>
-      <p className="mt-1 text-xs text-[#89968d]">{hint}</p>
+      <p
+        className={`mt-1 text-xs ${negative ? "text-red-700" : "text-[#89968d]"}`}
+      >
+        {hint}
+      </p>
       <span
-        className={`mt-2 inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold ${tones[tone]}`}
+        className={`mt-2 inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold ${negative ? "bg-red-100 text-red-800" : tones[tone]}`}
       >
         ကျပ်/ပဲ/ရွေး
       </span>

@@ -17,11 +17,11 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 const today = () => new Date().toISOString().slice(0, 10);
-const formatNumber = (value: number) =>
-  new Intl.NumberFormat("en-US").format(value || 0);
+const formatNumber = (value: number, maximumFractionDigits = 0) =>
+  new Intl.NumberFormat("en-US", { maximumFractionDigits }).format(value || 0);
 const formatWeight = (value: number) => {
-  const parts = goldWeightParts(Math.max(0, value));
-  return `${formatNumber(parts.kyat)} ကျပ် ${formatNumber(parts.pae)} ပဲ ${formatNumber(parts.yway)}`;
+  const parts = goldWeightParts(value);
+  return `${formatNumber(parts.kyat)} ကျပ် ${formatNumber(parts.pae)} ပဲ ${formatNumber(parts.yway, 1)} ရွေး`;
 };
 type PaymentMethod = "cash" | "bank" | "kbzpay" | "wavepay" | "other";
 const emptyForm = {
@@ -297,7 +297,9 @@ export default function NewEntry() {
                   <CheckCircle2 className="h-6 w-6 text-[#63a878]" />
                 </div>
               </div>
-              <div className="rounded-xl border border-[#dcebe0] bg-[#f4faf5] p-4">
+              <div
+                className={`rounded-xl border p-4 ${stockAfterEntry < 0 ? "border-red-300 bg-red-50" : "border-[#dcebe0] bg-[#f4faf5]"}`}
+              >
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
                     <p className="text-xs text-[#68756d]">

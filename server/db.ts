@@ -801,7 +801,7 @@ export async function getShopDailyOverview(date: string) {
     ? {
         cash: previousCash,
         ...(() => {
-          const parts = goldWeightParts(Math.max(0, previousGoldWeight));
+          const parts = goldWeightParts(previousGoldWeight);
           return {
             goldKyat: parts.kyat,
             goldPae: parts.pae,
@@ -922,6 +922,10 @@ export async function saveShopDailyClosing(input: InsertShopDailyClosing) {
     boughtWeight: overview.boughtWeight,
     soldWeight: overview.soldWeight,
   });
+  if (calculatedStock.expectedClosingWeight < 0)
+    throw new Error(
+      "ရွှေလက်ကျန် အနုတ်ဖြစ်နေပါသည်။ အဖွင့်လက်ကျန်နှင့် ဝယ်/ရောင်းစာရင်းကို ပြန်စစ်ပြီးမှ နေ့ပိတ်ပါ"
+    );
   const calculatedClosing = calculatedStock.expectedClosing;
   const weightNumbers = [
     opening.goldKyat,

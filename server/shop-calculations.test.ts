@@ -12,6 +12,16 @@ describe("Excel-based shop calculations", () => {
     expect(goldWeightParts(1.5)).toEqual({ kyat: 1, pae: 8, yway: 0 });
   });
 
+  it("keeps a negative weight signed without producing negative zero", () => {
+    expect(goldWeightParts(-5.96875)).toEqual({
+      kyat: -5,
+      pae: -15,
+      yway: -4,
+    });
+    expect(goldWeightParts(-0.5)).toEqual({ kyat: 0, pae: -8, yway: 0 });
+    expect(Object.is(goldWeightParts(-0.5).kyat, -0)).toBe(false);
+  });
+
   it("calculates stock as opening plus buys minus sells", () => {
     const balance = calculateStockBalance({
       opening: { kyat: 2, pae: 4, yway: 0 },
@@ -19,7 +29,23 @@ describe("Excel-based shop calculations", () => {
       soldWeight: 1,
     });
     expect(balance.rawClosingWeight).toBe(1.75);
+    expect(balance.expectedClosingWeight).toBe(1.75);
     expect(balance.expectedClosing).toEqual({ kyat: 1, pae: 12, yway: 0 });
+  });
+
+  it("shows the actual October 1 deficit instead of clamping it to zero", () => {
+    const balance = calculateStockBalance({
+      opening: { kyat: 12, pae: 10, yway: 2 },
+      boughtWeight: 11.55859375,
+      soldWeight: 30.16796875,
+    });
+    expect(balance.rawClosingWeight).toBe(-5.96875);
+    expect(balance.expectedClosingWeight).toBe(-5.96875);
+    expect(balance.expectedClosing).toEqual({
+      kyat: -5,
+      pae: -15,
+      yway: -4,
+    });
   });
 
   it("calculates No.2 output as three times incoming Hlaw weight", () => {
