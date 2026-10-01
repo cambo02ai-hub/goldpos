@@ -141,18 +141,18 @@ const adminOnlyProcedure = protectedProcedure.use(({ ctx, next }) => {
 export const appRouter = router({
   system: systemRouter,
   agent: router({
-    start: protectedProcedure
+    start: adminOnlyProcedure
       .input(z.object({ message: z.string().trim().min(1).max(4000) }))
       .mutation(({ input, ctx }) => startAgentTask(ctx.user.id, input.message)),
-    send: protectedProcedure
+    send: adminOnlyProcedure
       .input(z.object({ message: z.string().trim().min(1).max(4000) }))
       .mutation(({ input, ctx }) =>
         sendAgentMessage(ctx.user.id, input.message)
       ),
-    messages: protectedProcedure.query(({ ctx }) =>
+    messages: adminOnlyProcedure.query(({ ctx }) =>
       getAgentMessages(ctx.user.id)
     ),
-    confirm: protectedProcedure
+    confirm: adminOnlyProcedure
       .input(
         z.object({
           eventId: z.string().min(1),

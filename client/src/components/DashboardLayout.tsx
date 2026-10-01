@@ -326,7 +326,7 @@ function DashboardLayoutContent({
         )}
         <main className="flex-1 p-2 sm:p-3 md:p-4">{children}</main>
       </SidebarInset>
-      <AgentChatWidget />
+      {user?.role === "admin" && <AgentChatWidget />}
     </>
   );
 }
