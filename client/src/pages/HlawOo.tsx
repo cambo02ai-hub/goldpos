@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PrinterAppGuide } from "@/components/PrinterAppGuide";
 import { trpc } from "@/lib/trpc";
 import { exportSlipImage, printSlipAsPdf } from "@/lib/slip-export";
 import { format } from "date-fns";
@@ -641,31 +642,34 @@ function HlawInvoiceDialog({
           {row.note && <p className="mt-3 text-xs">မှတ်ချက်: {row.note}</p>}
           <p className="mt-5 text-center text-xs">ကျေးဇူးတင်ပါသည်။</p>
         </div>
-        <div className="flex justify-end gap-2 border-t border-[#edf1ee] bg-white px-5 py-4 no-print">
-          {isAppleTablet && (
-            <p className="mr-auto self-center text-xs text-[#2c6e49]">
-              iPad မှ Print dialog ဖွင့်ပြီး POS printer ကို ရွေးပါ
-            </p>
-          )}
-          <Button variant="outline" onClick={onClose}>
-            ပိတ်မည်
-          </Button>
-          <Button
-            onClick={print}
-            className="bg-[#276044] text-white hover:bg-[#1f5038]"
-          >
-            <Printer className="mr-2 h-4 w-4" />
-            PDF / Print
-          </Button>
-          <Button
-            variant="outline"
-            disabled={exportingImage}
-            onClick={exportImage}
-            className="border-[#bcd5c3] text-[#276044]"
-          >
-            <FileText className="mr-2 h-4 w-4" />
-            {exportingImage ? "ပြင်ဆင်နေသည်…" : "Image / Share"}
-          </Button>
+        <div className="space-y-3 border-t border-[#edf1ee] bg-white px-5 py-4 no-print">
+          <PrinterAppGuide />
+          <div className="flex justify-end gap-2">
+            {isAppleTablet && (
+              <p className="mr-auto self-center text-xs text-[#2c6e49]">
+                iPad မှ Print dialog ဖွင့်ပြီး POS printer ကို ရွေးပါ
+              </p>
+            )}
+            <Button variant="outline" onClick={onClose}>
+              ပိတ်မည်
+            </Button>
+            <Button
+              onClick={print}
+              className="bg-[#276044] text-white hover:bg-[#1f5038]"
+            >
+              <Printer className="mr-2 h-4 w-4" />
+              PDF / Print
+            </Button>
+            <Button
+              variant="outline"
+              disabled={exportingImage}
+              onClick={exportImage}
+              className="border-[#bcd5c3] text-[#276044]"
+            >
+              <FileText className="mr-2 h-4 w-4" />
+              {exportingImage ? "ပြင်ဆင်နေသည်…" : "Image / Share"}
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

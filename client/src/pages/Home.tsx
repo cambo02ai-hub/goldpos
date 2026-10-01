@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { PrinterAppGuide } from "@/components/PrinterAppGuide";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { trpc } from "@/lib/trpc";
 import { exportSlipImage, printSlipAsPdf } from "@/lib/slip-export";
@@ -696,38 +697,41 @@ function InvoiceDialog({ row, onClose }: { row: any; onClose: () => void }) {
             </div>
           </div>
         </div>
-        <div className="flex items-center justify-between gap-2 border-t border-[#edf1ee] bg-white px-5 py-4 no-print">
-          <div className="text-xs text-[#78867e]">
-            ရွေးထားသည်:{" "}
-            <strong className="text-[#25322b]">
-              {slipSize === "custom" ? `${customLength}mm` : `${slipSize}mm`}
-            </strong>
-            {isAppleTablet && (
-              <span className="mt-1 block text-[#2c6e49]">
-                iPad မှ Print dialog ဖွင့်ပြီး POS printer ကို ရွေးပါ
-              </span>
-            )}
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={onClose}>
-              ပိတ်မည်
-            </Button>
-            <Button
-              onClick={printSlip}
-              className="bg-[#276044] text-white hover:bg-[#1f5038]"
-            >
-              <Printer className="mr-2 h-4 w-4" />
-              PDF / Print
-            </Button>
-            <Button
-              variant="outline"
-              disabled={exportingImage}
-              onClick={exportImage}
-              className="border-[#bcd5c3] text-[#276044]"
-            >
-              <FileDown className="mr-2 h-4 w-4" />
-              {exportingImage ? "ပြင်ဆင်နေသည်…" : "Image / Share"}
-            </Button>
+        <div className="space-y-3 border-t border-[#edf1ee] bg-white px-5 py-4 no-print">
+          <PrinterAppGuide />
+          <div className="flex items-center justify-between gap-2">
+            <div className="text-xs text-[#78867e]">
+              ရွေးထားသည်:{" "}
+              <strong className="text-[#25322b]">
+                {slipSize === "custom" ? `${customLength}mm` : `${slipSize}mm`}
+              </strong>
+              {isAppleTablet && (
+                <span className="mt-1 block text-[#2c6e49]">
+                  iPad မှ Print dialog ဖွင့်ပြီး POS printer ကို ရွေးပါ
+                </span>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={onClose}>
+                ပိတ်မည်
+              </Button>
+              <Button
+                onClick={printSlip}
+                className="bg-[#276044] text-white hover:bg-[#1f5038]"
+              >
+                <Printer className="mr-2 h-4 w-4" />
+                PDF / Print
+              </Button>
+              <Button
+                variant="outline"
+                disabled={exportingImage}
+                onClick={exportImage}
+                className="border-[#bcd5c3] text-[#276044]"
+              >
+                <FileDown className="mr-2 h-4 w-4" />
+                {exportingImage ? "ပြင်ဆင်နေသည်…" : "Image / Share"}
+              </Button>
+            </div>
           </div>
         </div>
       </DialogContent>
