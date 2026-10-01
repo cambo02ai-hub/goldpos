@@ -26,7 +26,7 @@ const today = () => new Date().toISOString().slice(0, 10);
 const formatNumber = (value: number, maximumFractionDigits = 0) =>
   new Intl.NumberFormat("en-US", { maximumFractionDigits }).format(value || 0);
 const formatGoldWeight = (weight: number) => {
-  const parts = goldWeightParts(Math.max(0, weight));
+  const parts = goldWeightParts(weight);
   return `${formatNumber(parts.kyat)} ကျပ် ${formatNumber(parts.pae)} ပဲ ${formatNumber(parts.yway, 1)} ရွေး`;
 };
 const monthStart = (month: string) => `${month}-01`;
@@ -75,11 +75,13 @@ function Metric({
   value,
   hint,
   tone = "green",
+  negative = false,
 }: {
   label: string;
   value: string;
   hint?: string;
   tone?: "green" | "orange" | "blue" | "purple";
+  negative?: boolean;
 }) {
   const styles = {
     green: "bg-[#e9f5ed] text-[#286442]",
@@ -88,12 +90,24 @@ function Metric({
     purple: "bg-[#f1edfa] text-[#7055a2]",
   };
   return (
-    <div className="rounded-xl border border-[#e5ebe7] bg-white p-4 shadow-sm">
+    <div
+      className={`rounded-xl border p-4 shadow-sm ${negative ? "border-red-300 bg-red-50" : "border-[#e5ebe7] bg-white"}`}
+    >
       <p className="text-xs font-semibold text-[#748079]">{label}</p>
-      <p className="mt-1 text-xl font-bold text-[#17201d]">{value}</p>
-      {hint && <p className="mt-1 text-xs text-[#89968d]">{hint}</p>}
+      <p
+        className={`mt-1 text-xl font-bold ${negative ? "text-red-800" : "text-[#17201d]"}`}
+      >
+        {value}
+      </p>
+      {hint && (
+        <p
+          className={`mt-1 text-xs ${negative ? "text-red-700" : "text-[#89968d]"}`}
+        >
+          {hint}
+        </p>
+      )}
       <span
-        className={`mt-2 inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold ${styles[tone]}`}
+        className={`mt-2 inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold ${negative ? "bg-red-100 text-red-800" : styles[tone]}`}
       >
         စာရင်း
       </span>
@@ -482,8 +496,13 @@ export default function ShopWorkflow() {
                         ? formatGoldWeight(stockBalance.openingWeight)
                         : "0 ကျပ် 0 ပဲ 0 ရွေး"
                     }
-                    hint="ယခင်နေ့ပိတ်လက်ကျန်မှ"
+                    hint={
+                      openingGoldIsCarryForward
+                        ? "ယခင်နေ့ပိတ်လက်ကျန်မှ"
+                        : "သတ်မှတ်ထားသော အဖွင့်လက်ကျန်မှ"
+                    }
                     tone="blue"
+                    negative={(stockBalance?.openingWeight ?? 0) < 0}
                   />
                   <Metric
                     label="ယနေ့ဝယ်"
@@ -512,10 +531,25 @@ export default function ShopWorkflow() {
                         ? formatGoldWeight(stockBalance.expectedClosingWeight)
                         : "0 ကျပ် 0 ပဲ 0 ရွေး"
                     }
-                    hint="အလိုအလျောက်တွက်ချက်မှု"
+                    hint={
+                      (stockBalance?.expectedClosingWeight ?? 0) < 0
+                        ? "အနုတ်လက်ကျန် — စာရင်းပြန်စစ်ရန်"
+                        : "အလိုအလျောက်တွက်ချက်မှု"
+                    }
                     tone="purple"
+                    negative={(stockBalance?.expectedClosingWeight ?? 0) < 0}
                   />
                 </div>
+                {(stockBalance?.expectedClosingWeight ?? 0) < 0 && (
+                  <p
+                    role="alert"
+                    className="mt-4 rounded-lg border border-red-300 bg-red-50 p-3 text-sm font-semibold text-red-800"
+                  >
+                    သတိ: မျှော်မှန်းရွှေလက်ကျန် အနုတ်ဖြစ်နေပါသည်။
+                    အဖွင့်လက်ကျန်နှင့် ဝယ်/ရောင်းစာရင်းကို ပြန်စစ်ပြီးမှ
+                    နေ့ပိတ်ပါ။
+                  </p>
+                )}
                 {daily?.closing && stockBalance && (
                   <div className="mt-4 rounded-lg border border-[#e5ebe7] bg-[#f8fbf9] p-3 text-sm text-[#53645b]">
                     လက်တွေ့ပိတ်လက်ကျန်:{" "}

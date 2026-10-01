@@ -5,12 +5,17 @@ export function goldWeight({ kyat, pae, yway }: GoldWeightParts): number {
 }
 
 export function goldWeightParts(weight: number): GoldWeightParts {
-  const totalTenthYway = Math.max(0, Math.round(weight * 1280));
+  const totalTenthYway = Math.round(Math.abs(weight) * 1280);
   const kyat = Math.floor(totalTenthYway / 1280);
   const remainder = totalTenthYway - kyat * 1280;
   const pae = Math.floor(remainder / 80);
   const yway = Math.round(((remainder - pae * 80) / 10) * 10) / 10;
-  return { kyat, pae, yway };
+  const sign = weight < 0 ? -1 : 1;
+  return {
+    kyat: kyat === 0 ? 0 : sign * kyat,
+    pae: pae === 0 ? 0 : sign * pae,
+    yway: yway === 0 ? 0 : sign * yway,
+  };
 }
 
 export type GoldStockBalance = {
@@ -31,7 +36,7 @@ export function calculateStockBalance(input: {
   const openingWeight = goldWeight(input.opening);
   const rawClosingWeight =
     openingWeight + input.boughtWeight - input.soldWeight;
-  const expectedClosingWeight = Math.max(0, rawClosingWeight);
+  const expectedClosingWeight = rawClosingWeight;
   return {
     openingWeight,
     boughtWeight: input.boughtWeight,
