@@ -21,7 +21,6 @@ import {
 import { ENV } from "./_core/env";
 import {
   calculateHlawKyoot,
-  calculateNo2Weight,
   calculateStockBalance,
   estimateDailyGoldProfit,
   goldWeight,
@@ -591,10 +590,42 @@ export async function listUsers() {
       name: users.name,
       email: users.email,
       role: users.role,
+      permissions: users.permissions,
       lastSignedIn: users.lastSignedIn,
     })
     .from(users)
     .orderBy(desc(users.lastSignedIn));
+}
+
+export async function createLocalEmployee(input: {
+  username: string;
+  name: string;
+  passwordHash: string;
+  permissions: string[];
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database is not available");
+  const existing = await getUserByOpenId(input.username);
+  if (existing) throw new Error("ဤ username ကို အသုံးပြုပြီးသား ဖြစ်ပါသည်");
+  await db.insert(users).values({
+    openId: input.username,
+    name: input.name,
+    loginMethod: "local",
+    passwordHash: input.passwordHash,
+    permissions: input.permissions,
+    role: "user",
+    lastSignedIn: new Date(),
+  });
+  return { success: true };
+}
+
+export async function updateUserPermissions(id: number, permissions: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database is not available");
+  return db
+    .update(users)
+    .set({ permissions: JSON.parse(permissions) })
+    .where(eq(users.id, id));
 }
 
 export async function updateUserRole(id: number, role: "user" | "admin") {
@@ -977,11 +1008,6 @@ export async function listHlawOoEntries(filters?: DateFilters) {
     .where(conditions.length ? and(...conditions) : undefined)
     .orderBy(desc(hlawOoEntries.serviceDate), desc(hlawOoEntries.id));
   return rows.map(row => {
-    const no2 = calculateNo2Weight({
-      kyat: Number(row.hlawKyat),
-      pae: Number(row.hlawPae),
-      yway: Number(row.hlawYway),
-    });
     const kyoot = calculateHlawKyoot(
       {
         kyat: Number(row.hlawKyat),
@@ -996,9 +1022,6 @@ export async function listHlawOoEntries(filters?: DateFilters) {
     );
     return {
       ...row,
-      no2Kyat: no2.kyat,
-      no2Pae: no2.pae,
-      no2Yway: no2.yway,
       kyoot,
     };
   });

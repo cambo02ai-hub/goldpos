@@ -10,8 +10,15 @@ import {
 } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { PrinterAppGuide } from "@/components/PrinterAppGuide";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { trpc } from "@/lib/trpc";
+import {
+  exportSlipImage,
+  exportSlipPdf,
+  printSlipAsPdf,
+  saveSlipImage,
+} from "@/lib/slip-export";
 import { goldWeightParts } from "@shared/shop-calculations";
 import {
   ArrowDownLeft,
@@ -25,7 +32,7 @@ import {
   Search,
   Trash2,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type FilterType = "all" | "sell" | "buy";
 type ViewMode = "today" | "all";
@@ -493,6 +500,10 @@ function MobileTransaction({
 }
 
 function InvoiceDialog({ row, onClose }: { row: any; onClose: () => void }) {
+  const slipRef = useRef<HTMLDivElement>(null);
+  const [exportingImage, setExportingImage] = useState(false);
+  const [savingImage, setSavingImage] = useState(false);
+  const [exportingPdf, setExportingPdf] = useState(false);
   const [slipSize, setSlipSize] = useState<SlipSize>(() =>
     typeof window !== "undefined"
       ? (window.localStorage.getItem("gold-slip-size") as SlipSize) || "58"
@@ -519,11 +530,13 @@ function InvoiceDialog({ row, onClose }: { row: any; onClose: () => void }) {
         : slipSize === "58"
           ? "140mm"
           : "160mm";
+    document.documentElement.style.setProperty("--slip-height", printHeight);
     printStyle.textContent = `@media print { @page { size: ${width}mm ${printHeight}; margin: 0; } }`;
     document.head.appendChild(printStyle);
     return () => {
       printStyle.remove();
       document.documentElement.style.removeProperty("--slip-width");
+      document.documentElement.style.removeProperty("--slip-height");
     };
   }, [row, slipSize, customLength]);
   if (!row) return null;
@@ -538,11 +551,77 @@ function InvoiceDialog({ row, onClose }: { row: any; onClose: () => void }) {
         Number(row.rate || 0)
     );
   const paperWidth = slipSize === "58" ? "w-[58mm]" : "w-[80mm]";
+  const isAppleTablet =
+    typeof navigator !== "undefined" &&
+    /iPad|Macintosh/.test(navigator.userAgent) &&
+    "ontouchend" in document;
+  const printSlip = () => {
+    if (slipRef.current) {
+      printSlipAsPdf(slipRef.current, `goldpos-slip-${row.id}`);
+    }
+  };
+  const exportImage = async () => {
+    if (!slipRef.current) return;
+    setExportingImage(true);
+    try {
+      await exportSlipImage(
+        slipRef.current,
+        `goldpos-slip-${row.id}.png`,
+        `${typeLabel} #${row.id}`
+      );
+    } catch (error) {
+      if ((error as DOMException)?.name !== "AbortError") {
+        window.alert("Slip image ထုတ်၍ မရပါ။ ထပ်မံစမ်းကြည့်ပါ။");
+      }
+    } finally {
+      setExportingImage(false);
+    }
+  };
+  const saveImage = async () => {
+    if (!slipRef.current) return;
+    setSavingImage(true);
+    try {
+      await saveSlipImage(slipRef.current, `goldpos-slip-${row.id}.png`);
+      window.alert(
+        "PNG သိမ်းပြီးပါပြီ။ Files မှ printer app သို့ Share လုပ်ပါ။"
+      );
+    } catch {
+      window.alert("Slip image သိမ်း၍ မရပါ။ ထပ်မံစမ်းကြည့်ပါ။");
+    } finally {
+      setSavingImage(false);
+    }
+  };
+  const exportPdf = async () => {
+    if (!slipRef.current) return;
+    setExportingPdf(true);
+    try {
+      const widthMm = slipSize === "80" ? 80 : 58;
+      const heightMm =
+        slipSize === "custom"
+          ? Math.min(500, Math.max(50, Number(customLength) || 180))
+          : slipSize === "58"
+            ? 140
+            : 160;
+      await exportSlipPdf(
+        slipRef.current,
+        `goldpos-slip-${row.id}.pdf`,
+        `${typeLabel} #${row.id}`,
+        widthMm,
+        heightMm
+      );
+    } catch (error) {
+      if ((error as DOMException)?.name !== "AbortError") {
+        window.alert("Slip PDF ထုတ်၍ မရပါ။ ထပ်မံစမ်းကြည့်ပါ။");
+      }
+    } finally {
+      setExportingPdf(false);
+    }
+  };
   return (
     <Dialog open={Boolean(row)} onOpenChange={open => !open && onClose()}>
-      <DialogContent className="max-w-[720px] overflow-hidden p-0">
+      <DialogContent className="max-h-[92vh] max-w-[720px] overflow-y-auto p-0">
         <div className="border-b border-[#e5ece7] bg-[#f7fbf8] px-5 py-4 no-print">
-          <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-sm font-bold text-[#1e3025]">
                 ဘောင်ချာ ကြိုကြည့်ရန်
@@ -551,7 +630,7 @@ function InvoiceDialog({ row, onClose }: { row: any; onClose: () => void }) {
                 Print မထုတ်ခင် size နှင့် ပုံစံကို စစ်ဆေးပါ
               </p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <label
                 htmlFor="slip-size"
                 className="text-xs font-semibold text-[#53645b]"
@@ -615,7 +694,21 @@ function InvoiceDialog({ row, onClose }: { row: any; onClose: () => void }) {
               } as React.CSSProperties
             }
           >
-            <div className="invoice-print-area" data-slip-size={slipSize}>
+            <div
+              ref={slipRef}
+              className="invoice-print-area"
+              data-slip-size={slipSize}
+              style={
+                {
+                  "--slip-height":
+                    slipSize === "custom"
+                      ? `${Math.min(500, Math.max(50, Number(customLength) || 180))}mm`
+                      : slipSize === "58"
+                        ? "140mm"
+                        : "160mm",
+                } as React.CSSProperties
+              }
+            >
               <DialogHeader className="border-b border-[#e5ece7] bg-[#f7fbf8] px-4 py-4">
                 <div className="flex items-start justify-between gap-3">
                   <div>
@@ -665,24 +758,58 @@ function InvoiceDialog({ row, onClose }: { row: any; onClose: () => void }) {
             </div>
           </div>
         </div>
-        <div className="flex items-center justify-between gap-2 border-t border-[#edf1ee] bg-white px-5 py-4 no-print">
-          <div className="text-xs text-[#78867e]">
-            ရွေးထားသည်:{" "}
-            <strong className="text-[#25322b]">
-              {slipSize === "custom" ? `${customLength}mm` : `${slipSize}mm`}
-            </strong>
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={onClose}>
-              ပိတ်မည်
-            </Button>
-            <Button
-              onClick={() => window.print()}
-              className="bg-[#276044] text-white hover:bg-[#1f5038]"
-            >
-              <Printer className="mr-2 h-4 w-4" />
-              Print ထုတ်မည်
-            </Button>
+        <div className="space-y-3 border-t border-[#edf1ee] bg-white px-5 py-4 no-print">
+          <PrinterAppGuide
+            elementRef={slipRef}
+            widthMm={slipSize === "80" ? 80 : 58}
+          />
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="text-xs text-[#78867e]">
+              ရွေးထားသည်:{" "}
+              <strong className="text-[#25322b]">
+                {slipSize === "custom" ? `${customLength}mm` : `${slipSize}mm`}
+              </strong>
+              {isAppleTablet && (
+                <span className="mt-1 block text-[#2c6e49]">
+                  iPad မှ Print dialog ဖွင့်ပြီး POS printer ကို ရွေးပါ
+                </span>
+              )}
+            </div>
+            <div className="flex flex-wrap justify-end gap-2">
+              <Button variant="outline" onClick={onClose}>
+                ပိတ်မည်
+              </Button>
+              <Button
+                onClick={exportPdf}
+                disabled={exportingPdf}
+                className="bg-[#276044] text-white hover:bg-[#1f5038]"
+              >
+                <FileDown className="mr-2 h-4 w-4" />
+                {exportingPdf ? "PDF ပြင်ဆင်နေသည်…" : "Exact PDF / Share"}
+              </Button>
+              <Button variant="outline" onClick={printSlip}>
+                <Printer className="mr-2 h-4 w-4" />
+                Browser Print
+              </Button>
+              <Button
+                variant="outline"
+                disabled={exportingImage}
+                onClick={exportImage}
+                className="border-[#bcd5c3] text-[#276044]"
+              >
+                <FileDown className="mr-2 h-4 w-4" />
+                {exportingImage ? "ပြင်ဆင်နေသည်…" : "Image / Share"}
+              </Button>
+              <Button
+                variant="outline"
+                disabled={savingImage}
+                onClick={saveImage}
+                className="border-[#bcd5c3] text-[#276044]"
+              >
+                <FileDown className="mr-2 h-4 w-4" />
+                {savingImage ? "သိမ်းနေသည်…" : "Save PNG"}
+              </Button>
+            </div>
           </div>
         </div>
       </DialogContent>

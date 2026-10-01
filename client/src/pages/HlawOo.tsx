@@ -4,10 +4,19 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PrinterAppGuide } from "@/components/PrinterAppGuide";
 import { trpc } from "@/lib/trpc";
+import { calculateHlawKyoot } from "@shared/shop-calculations";
+import {
+  exportSlipImage,
+  exportSlipPdf,
+  printSlipAsPdf,
+  saveSlipImage,
+} from "@/lib/slip-export";
 import { format } from "date-fns";
 import { FileText, Printer, Search, Trash2, X } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
+import type { CSSProperties } from "react";
 import { toast } from "sonner";
 
 type SlipSize = "58" | "80" | "custom";
@@ -70,7 +79,18 @@ export default function HlawOo() {
       b[0].localeCompare(a[0])
     );
   }, [reportRows]);
-  const no2Preview = calculateNo2(form);
+  const kyootPreview = calculateHlawKyoot(
+    {
+      kyat: number(form.hlawKyat),
+      pae: number(form.hlawPae),
+      yway: number(form.hlawYway),
+    },
+    {
+      kyat: number(form.tinKyat),
+      pae: number(form.tinPae),
+      htwe: number(form.tinHtwe),
+    }
+  );
   const createMutation = trpc.shopBook.createHlawOo.useMutation({
     onSuccess: () => {
       toast.success("လှော်အိုးစာရင်း သိမ်းပြီးပါပြီ");
@@ -135,8 +155,8 @@ export default function HlawOo() {
           <CardHeader className="border-b border-[#edf1ee] bg-white px-4 py-4 sm:px-6">
             <CardTitle className="text-xl">လှော်အိုးစာရင်းအသစ်</CardTitle>
             <p className="text-sm text-[#78867e]">
-              No.2 ကို Hlaw × 3 ဖြင့် အလိုအလျောက်တွက်ပြီး Kyoot ကို Tin
-              အပေါ်အခြေခံ၍ ပြပါမည်။
+              No.2 ကို အလိုအလျောက်မတွက်တော့ဘဲ Kyoot ကို Hlaw/Tin formula ဖြင့်
+              အလိုအလျောက်တွက်ချက်ပြပါမည်။
             </p>
           </CardHeader>
           <CardContent className="bg-white px-4 py-5 sm:px-6">
@@ -177,14 +197,6 @@ export default function HlawOo() {
                 step="0.1"
                 onChange={v => update("hlawYway", v)}
               />
-              <div className="rounded-lg border border-[#dcebe0] bg-[#f4faf5] p-3 text-sm text-[#286442]">
-                <p className="text-xs text-[#68756d]">
-                  No.2 အလိုအလျောက် (Hlaw × 3)
-                </p>
-                <b>
-                  {weightText(no2Preview.kyat, no2Preview.pae, no2Preview.yway)}
-                </b>
-              </div>
               <WeightField
                 label="Tin ကျပ်သား"
                 value={form.tinKyat}
@@ -203,6 +215,15 @@ export default function HlawOo() {
                 step="0.1"
                 onChange={v => update("tinHtwe", v)}
               />
+              <div className="rounded-lg border border-[#dcebe0] bg-[#f4faf5] p-3 text-sm text-[#286442]">
+                <p className="text-xs text-[#68756d]">
+                  Kyoot အလိုအလျောက် (Hlaw/Tin formula)
+                </p>
+                <b>{kyootPreview === null ? "—" : kyootPreview.toFixed(2)}</b>
+                <p className="mt-1 text-[11px] text-[#68756d]">
+                  Formula: (Tin ÷ Hlaw − 1) × 120
+                </p>
+              </div>
               <Field label="လှော်ခ (ကျပ်)">
                 <Input
                   type="number"
@@ -270,7 +291,6 @@ export default function HlawOo() {
                     <th className="px-4 py-3">နေ့စွဲ</th>
                     <th className="px-3 py-3">အမည်</th>
                     <th className="px-3 py-3">Hlaw</th>
-                    <th className="px-3 py-3">No.2</th>
                     <th className="px-3 py-3">Tin</th>
                     <th className="px-3 py-3 text-right">Kyoot</th>
                     <th className="px-3 py-3 text-right">လှော်ခ</th>
@@ -286,9 +306,6 @@ export default function HlawOo() {
                       </td>
                       <td className="px-3 py-3">
                         {weightText(row.hlawKyat, row.hlawPae, row.hlawYway)}
-                      </td>
-                      <td className="px-3 py-3">
-                        {weightText(row.no2Kyat, row.no2Pae, row.no2Yway)}
                       </td>
                       <td className="px-3 py-3">
                         {weightText(row.tinKyat, row.tinPae, row.tinHtwe)}
@@ -443,17 +460,6 @@ export default function HlawOo() {
 function number(value: string) {
   return Number(value || 0);
 }
-function calculateNo2(form: FormState) {
-  const total =
-    (number(form.hlawKyat) +
-      number(form.hlawPae) / 16 +
-      number(form.hlawYway) / 128) *
-    3;
-  const kyat = Math.floor(total);
-  const paeRaw = (total - kyat) * 16;
-  const pae = Math.floor(paeRaw);
-  return { kyat, pae, yway: Math.round((paeRaw - pae) * 8 * 10) / 10 };
-}
 function Field({
   label,
   children,
@@ -512,6 +518,10 @@ function HlawInvoiceDialog({
   row: any;
   onClose: () => void;
 }) {
+  const slipRef = useRef<HTMLDivElement>(null);
+  const [exportingImage, setExportingImage] = useState(false);
+  const [savingImage, setSavingImage] = useState(false);
+  const [exportingPdf, setExportingPdf] = useState(false);
   const [slipSize, setSlipSize] = useState<SlipSize>(() =>
     typeof window !== "undefined"
       ? (window.localStorage.getItem("gold-hlaw-slip-size") as SlipSize) || "58"
@@ -529,22 +539,96 @@ function HlawInvoiceDialog({
     window.localStorage.setItem("gold-hlaw-slip-length", String(length));
     const style = document.createElement("style");
     const width = slipSize === "80" ? 80 : 58;
-    style.textContent = `@media print { @page { size: ${width}mm ${slipSize === "custom" ? length : 180}mm; margin: 0; } }`;
+    const printHeight = slipSize === "custom" ? length : 180;
+    document.documentElement.style.setProperty("--slip-width", `${width}mm`);
+    document.documentElement.style.setProperty(
+      "--slip-height",
+      `${printHeight}mm`
+    );
+    style.textContent = `@media print { @page { size: ${width}mm ${printHeight}mm; margin: 0; } }`;
     document.head.appendChild(style);
-    window.print();
-    window.setTimeout(() => style.remove(), 1000);
+    if (slipRef.current) {
+      printSlipAsPdf(slipRef.current, `goldpos-hlaw-slip-${row.id}`);
+    }
+    const cleanup = () => {
+      style.remove();
+      document.documentElement.style.removeProperty("--slip-width");
+      document.documentElement.style.removeProperty("--slip-height");
+      window.removeEventListener("afterprint", cleanup);
+    };
+    window.addEventListener("afterprint", cleanup, { once: true });
+    window.setTimeout(cleanup, 10000);
   };
+  const exportImage = async () => {
+    if (!slipRef.current) return;
+    setExportingImage(true);
+    try {
+      await exportSlipImage(
+        slipRef.current,
+        `goldpos-hlaw-slip-${row.id}.png`,
+        `လှော်အိုး ဘောင်ချာ #${row.id}`
+      );
+    } catch (error) {
+      if ((error as DOMException)?.name !== "AbortError") {
+        window.alert("Slip image ထုတ်၍ မရပါ။ ထပ်မံစမ်းကြည့်ပါ။");
+      }
+    } finally {
+      setExportingImage(false);
+    }
+  };
+  const saveImage = async () => {
+    if (!slipRef.current) return;
+    setSavingImage(true);
+    try {
+      await saveSlipImage(slipRef.current, `goldpos-hlaw-slip-${row.id}.png`);
+      window.alert(
+        "PNG သိမ်းပြီးပါပြီ။ Files မှ printer app သို့ Share လုပ်ပါ။"
+      );
+    } catch {
+      window.alert("Slip image သိမ်း၍ မရပါ။ ထပ်မံစမ်းကြည့်ပါ။");
+    } finally {
+      setSavingImage(false);
+    }
+  };
+  const exportPdf = async () => {
+    if (!slipRef.current) return;
+    setExportingPdf(true);
+    try {
+      const widthMm = slipSize === "80" ? 80 : 58;
+      const heightMm =
+        slipSize === "custom"
+          ? Math.min(500, Math.max(50, Number(customLength) || 180))
+          : 180;
+      await exportSlipPdf(
+        slipRef.current,
+        `goldpos-hlaw-slip-${row.id}.pdf`,
+        `လှော်အိုး ဘောင်ချာ #${row.id}`,
+        widthMm,
+        heightMm
+      );
+    } catch (error) {
+      if ((error as DOMException)?.name !== "AbortError") {
+        window.alert("Slip PDF ထုတ်၍ မရပါ။ ထပ်မံစမ်းကြည့်ပါ။");
+      }
+    } finally {
+      setExportingPdf(false);
+    }
+  };
+  const isAppleTablet =
+    typeof navigator !== "undefined" &&
+    /iPad|Macintosh/.test(navigator.userAgent) &&
+    "ontouchend" in document;
   return (
     <Dialog open={Boolean(row)} onOpenChange={open => !open && onClose()}>
-      <DialogContent className="max-w-[720px] overflow-hidden p-0">
-        <div className="flex items-center justify-between border-b border-[#e5ece7] bg-[#f7fbf8] px-5 py-4 no-print">
+      <DialogContent className="max-h-[92vh] max-w-[720px] overflow-y-auto p-0">
+        <div className="flex flex-col gap-3 border-b border-[#e5ece7] bg-[#f7fbf8] px-5 py-4 no-print sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="font-bold text-[#1e3025]">လှော်အိုး ဘောင်ချာ</p>
             <p className="text-xs text-[#78867e]">
               Slip ကို ကြိုကြည့်ပြီး print ထုတ်ပါ
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <select
               value={slipSize}
               onChange={e => setSlipSize(e.target.value as SlipSize)}
@@ -576,57 +660,117 @@ function HlawInvoiceDialog({
           </div>
         </div>
         <div
-          className={`mx-auto my-5 bg-white p-5 text-sm text-[#17201d] ${slipSize === "58" ? "w-[58mm]" : "w-[80mm]"}`}
+          ref={slipRef}
+          className={`invoice-print-area hlaw-slip mx-auto my-5 bg-white text-[#17201d] ${slipSize === "58" ? "w-[58mm] p-3" : "w-[80mm] p-5"}`}
           style={
-            slipSize === "custom"
-              ? {
-                  minHeight: `${Math.min(500, Math.max(50, Number(customLength) || 180))}mm`,
-                }
-              : undefined
+            {
+              "--slip-height": `${Math.min(500, Math.max(50, Number(customLength) || 180))}mm`,
+            } as CSSProperties
           }
         >
-          <div className="text-center">
-            <p className="mt-1 font-semibold">လှော်အိုး ဝန်ဆောင်မှုဘောင်ချာ</p>
-            <p className="text-xs">{row.serviceDate}</p>
+          <div className="hlaw-slip-header text-center">
+            <div className="mx-auto mb-2 h-1 w-12 rounded-full bg-[#b7791f]" />
+            <p className="mt-1 text-base font-extrabold tracking-tight">
+              လှော်အိုး ဘောင်ချာ
+            </p>
+            <div className="mt-2 flex items-center justify-center gap-2 text-[11px] text-[#66756b]">
+              <span>{row.serviceDate}</span>
+              <span className="text-[#b8c2bb]">•</span>
+              <span>#{row.id}</span>
+            </div>
           </div>
-          <div className="my-3 border-t border-dashed border-[#9aa79f]" />
-          <SlipLine label="အမည်" value={row.customerName} />
-          <SlipLine
-            label="Hlaw"
-            value={weightText(row.hlawKyat, row.hlawPae, row.hlawYway)}
-          />
-          <SlipLine
-            label="No.2"
-            value={weightText(row.no2Kyat, row.no2Pae, row.no2Yway)}
-          />
-          <SlipLine
-            label="Tin"
-            value={weightText(row.tinKyat, row.tinPae, row.tinHtwe)}
-          />
-          <SlipLine
-            label="Kyoot"
-            value={row.kyoot === null ? "—" : Number(row.kyoot).toFixed(2)}
-          />
-          <div className="my-3 border-t border-dashed border-[#9aa79f]" />
-          <SlipLine
-            label="လှော်ခ"
-            value={`${formatNumber(Number(row.serviceFee))} ကျပ်`}
-            strong
-          />
-          {row.note && <p className="mt-3 text-xs">မှတ်ချက်: {row.note}</p>}
-          <p className="mt-5 text-center text-xs">ကျေးဇူးတင်ပါသည်။</p>
+          <div className="my-4 border-t border-dashed border-[#c8d0ca]" />
+          <div className="rounded-xl border border-[#dce7df] bg-[#f8fbf9] p-3">
+            <SlipLine label="အမည်" value={row.customerName} />
+          </div>
+          <div className="mt-3 rounded-xl border border-[#e3e8e4] bg-white p-3 shadow-[0_2px_8px_rgba(39,96,68,0.06)]">
+            <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.16em] text-[#9a6a20]">
+              Weight details
+            </p>
+            <SlipLine
+              label="Hlaw"
+              value={weightText(row.hlawKyat, row.hlawPae, row.hlawYway)}
+            />
+            <SlipLine
+              label="Tin"
+              value={weightText(row.tinKyat, row.tinPae, row.tinHtwe)}
+            />
+            <div className="my-2 border-t border-dashed border-[#d8e1da]" />
+            <SlipLine
+              label="Kyoot"
+              value={row.kyoot === null ? "—" : Number(row.kyoot).toFixed(2)}
+              strong
+            />
+          </div>
+          <div className="mt-3 rounded-xl bg-[#276044] px-3 py-3 text-white">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#c9e5d1]">
+              Service fee
+            </p>
+            <p className="mt-1 text-right text-lg font-extrabold tracking-tight">
+              {formatNumber(Number(row.serviceFee))}{" "}
+              <span className="text-sm font-semibold">ကျပ်</span>
+            </p>
+          </div>
+          {row.note && (
+            <div className="mt-3 rounded-lg border-l-2 border-[#b7791f] bg-[#fffaf1] px-3 py-2 text-[11px] text-[#53645b]">
+              <span className="font-bold text-[#7e5a1c]">မှတ်ချက်</span> ·{" "}
+              {row.note}
+            </div>
+          )}
+          <div className="mt-5 text-center">
+            <div className="mx-auto mb-2 h-px w-16 bg-[#d8e1da]" />
+            <p className="text-[11px] font-semibold text-[#53645b]">
+              ကျေးဇူးတင်ပါသည်။
+            </p>
+          </div>
         </div>
-        <div className="flex justify-end gap-2 border-t border-[#edf1ee] bg-white px-5 py-4 no-print">
-          <Button variant="outline" onClick={onClose}>
-            ပိတ်မည်
-          </Button>
-          <Button
-            onClick={print}
-            className="bg-[#276044] text-white hover:bg-[#1f5038]"
-          >
-            <Printer className="mr-2 h-4 w-4" />
-            Print ထုတ်မည်
-          </Button>
+        <div className="space-y-3 border-t border-[#edf1ee] bg-white px-5 py-4 no-print">
+          <PrinterAppGuide
+            elementRef={slipRef}
+            widthMm={slipSize === "80" ? 80 : 58}
+          />
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+            {isAppleTablet && (
+              <p className="mr-auto self-center text-xs text-[#2c6e49]">
+                iPad မှ Print dialog ဖွင့်ပြီး POS printer ကို ရွေးပါ
+              </p>
+            )}
+            <div className="flex flex-wrap justify-end gap-2">
+              <Button variant="outline" onClick={onClose}>
+                ပိတ်မည်
+              </Button>
+              <Button
+                onClick={exportPdf}
+                disabled={exportingPdf}
+                className="bg-[#276044] text-white hover:bg-[#1f5038]"
+              >
+                <FileText className="mr-2 h-4 w-4" />
+                {exportingPdf ? "PDF ပြင်ဆင်နေသည်…" : "Exact PDF / Share"}
+              </Button>
+              <Button variant="outline" onClick={print}>
+                <Printer className="mr-2 h-4 w-4" />
+                Browser Print
+              </Button>
+              <Button
+                variant="outline"
+                disabled={exportingImage}
+                onClick={exportImage}
+                className="border-[#bcd5c3] text-[#276044]"
+              >
+                <FileText className="mr-2 h-4 w-4" />
+                {exportingImage ? "ပြင်ဆင်နေသည်…" : "Image / Share"}
+              </Button>
+              <Button
+                variant="outline"
+                disabled={savingImage}
+                onClick={saveImage}
+                className="border-[#bcd5c3] text-[#276044]"
+              >
+                <FileText className="mr-2 h-4 w-4" />
+                {savingImage ? "သိမ်းနေသည်…" : "Save PNG"}
+              </Button>
+            </div>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
@@ -643,10 +787,10 @@ function SlipLine({
 }) {
   return (
     <div
-      className={`flex justify-between gap-2 py-1 ${strong ? "font-bold" : ""}`}
+      className={`flex items-start justify-between gap-3 py-1 text-[11px] leading-5 ${strong ? "font-extrabold text-[#276044]" : ""}`}
     >
-      <span>{label}</span>
-      <span className="text-right">{value}</span>
+      <span className="shrink-0 font-semibold text-[#6b786f]">{label}</span>
+      <span className="text-right font-semibold text-[#25322b]">{value}</span>
     </div>
   );
 }

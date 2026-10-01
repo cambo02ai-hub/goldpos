@@ -48,6 +48,7 @@ services:
       OWNER_OPEN_ID: ${OWNER_OPEN_ID:-}
       BUILT_IN_FORGE_API_URL: ${BUILT_IN_FORGE_API_URL:-}
       BUILT_IN_FORGE_API_KEY: ${BUILT_IN_FORGE_API_KEY:-}
+      MANUS_API_KEY: ${MANUS_API_KEY:-}
     ports:
       - "127.0.0.1:3003:3000"
     depends_on:

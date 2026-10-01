@@ -7,6 +7,7 @@ import { useState } from "react";
 export function AgentChatWidget() {
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
+  const [actionError, setActionError] = useState("");
   const utils = trpc.useUtils();
   const messagesQuery = trpc.agent.messages.useQuery(undefined, {
     enabled: open,
@@ -19,7 +20,11 @@ export function AgentChatWidget() {
     onSuccess: () => void utils.agent.messages.invalidate(),
   });
   const confirmMutation = trpc.agent.confirm.useMutation({
-    onSuccess: () => void utils.agent.messages.invalidate(),
+    onSuccess: () => {
+      setActionError("");
+      void utils.agent.messages.invalidate();
+    },
+    onError: error => setActionError(error.message || "အတည်ပြု၍ မရပါ"),
   });
   const busy = startMutation.isPending || sendMutation.isPending;
   const agent = messagesQuery.data;
@@ -99,12 +104,15 @@ export function AgentChatWidget() {
                     <Button
                       size="sm"
                       disabled={confirmMutation.isPending}
-                      onClick={() =>
+                      onClick={() => {
+                        setActionError("");
                         confirmMutation.mutate({
                           eventId: waiting.waiting_for_event_id!,
-                          input: { accept: true },
-                        })
-                      }
+                          input: needsDeployConfirmation
+                            ? { accept: true, global_allow: false }
+                            : { accept: true },
+                        });
+                      }}
                       className="bg-[#276044] text-white hover:bg-[#1f5038]"
                     >
                       <Check className="mr-1.5 h-4 w-4" />
@@ -114,16 +122,22 @@ export function AgentChatWidget() {
                       size="sm"
                       variant="outline"
                       disabled={confirmMutation.isPending}
-                      onClick={() =>
+                      onClick={() => {
+                        setActionError("");
                         confirmMutation.mutate({
                           eventId: waiting.waiting_for_event_id!,
                           input: { accept: false },
-                        })
-                      }
+                        });
+                      }}
                     >
                       မတင်ပါ
                     </Button>
                   </div>
+                )}
+                {actionError && (
+                  <p className="mt-2 rounded-lg bg-[#fff0ed] p-2 text-xs text-[#a64639]">
+                    {actionError}
+                  </p>
                 )}
               </div>
             )}
