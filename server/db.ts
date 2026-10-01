@@ -602,7 +602,7 @@ export async function createLocalEmployee(input: {
   username: string;
   name: string;
   passwordHash: string;
-  permissions: string;
+  permissions: string[];
 }) {
   const db = await getDb();
   if (!db) throw new Error("Database is not available");
@@ -623,7 +623,10 @@ export async function createLocalEmployee(input: {
 export async function updateUserPermissions(id: number, permissions: string) {
   const db = await getDb();
   if (!db) throw new Error("Database is not available");
-  return db.update(users).set({ permissions }).where(eq(users.id, id));
+  return db
+    .update(users)
+    .set({ permissions: JSON.parse(permissions) })
+    .where(eq(users.id, id));
 }
 
 export async function updateUserRole(id: number, role: "user" | "admin") {

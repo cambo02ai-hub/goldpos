@@ -168,11 +168,9 @@ function DashboardLayoutContent({
   const { state, toggleSidebar } = useSidebar();
   let employeePermissions: string[] | null = null;
   if (user?.permissions) {
-    try {
-      employeePermissions = JSON.parse(user.permissions);
-    } catch {
-      employeePermissions = [];
-    }
+    employeePermissions = Array.isArray(user.permissions)
+      ? user.permissions
+      : [];
   }
   const canAccess = (permission: string) =>
     user?.role === "admin" ||

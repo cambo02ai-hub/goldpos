@@ -151,12 +151,9 @@ const permissionProcedure = (permission: z.infer<typeof permissionSchema>) =>
   protectedProcedure.use(({ ctx, next }) => {
     if (ctx.user.role === "admin" || !ctx.user.permissions)
       return next({ ctx });
-    let permissions: string[] = [];
-    try {
-      permissions = JSON.parse(ctx.user.permissions);
-    } catch {
-      permissions = [];
-    }
+    const permissions = Array.isArray(ctx.user.permissions)
+      ? ctx.user.permissions
+      : [];
     if (!permissions.includes(permission)) {
       throw new TRPCError({
         code: "FORBIDDEN",
@@ -391,7 +388,7 @@ export const appRouter = router({
           username: input.username,
           name: input.name,
           passwordHash: hashPassword(input.password),
-          permissions: JSON.stringify(input.permissions),
+          permissions: input.permissions,
         })
       ),
     setPermissions: adminOnlyProcedure

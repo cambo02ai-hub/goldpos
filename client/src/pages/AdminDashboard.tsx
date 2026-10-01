@@ -27,8 +27,14 @@ const defaultPermissions: Permission[] = permissionOptions.map(
   option => option.key
 );
 
-function readPermissions(value: string | null | undefined): Permission[] {
+function readPermissions(
+  value: string | string[] | null | undefined
+): Permission[] {
   if (!value) return defaultPermissions;
+  if (Array.isArray(value))
+    return permissionOptions
+      .map(option => option.key)
+      .filter(key => value.includes(key));
   try {
     const parsed = JSON.parse(value);
     return permissionOptions

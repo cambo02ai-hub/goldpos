@@ -6,6 +6,7 @@ import {
   timestamp,
   varchar,
   double,
+  json,
   uniqueIndex,
 } from "drizzle-orm/mysql-core";
 
@@ -16,7 +17,7 @@ export const users = mysqlTable("users", {
   email: varchar("email", { length: 320 }),
   loginMethod: varchar("loginMethod", { length: 64 }),
   passwordHash: varchar("passwordHash", { length: 255 }),
-  permissions: varchar("permissions", { length: 1000 }),
+  permissions: json("permissions").$type<string[]>(),
   role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
