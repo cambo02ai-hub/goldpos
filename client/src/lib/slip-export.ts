@@ -118,11 +118,14 @@ function canvasToEscPos(canvas: HTMLCanvasElement, widthDots: number) {
     heightDots & 0xff,
     (heightDots >> 8) & 0xff,
   ]);
-  const output = new Uint8Array(2 + header.length + raster.length + 4);
+  const cutCommand = new Uint8Array([0x0a, 0x0a, 0x1d, 0x56, 0x00]);
+  const output = new Uint8Array(
+    2 + header.length + raster.length + cutCommand.length
+  );
   output.set([0x1b, 0x40], 0);
   output.set(header, 2);
   output.set(raster, 2 + header.length);
-  output.set([0x0a, 0x0a, 0x1d, 0x56, 0x00], 2 + header.length + raster.length);
+  output.set(cutCommand, 2 + header.length + raster.length);
   return output;
 }
 
