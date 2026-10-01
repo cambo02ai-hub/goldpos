@@ -671,7 +671,7 @@ function HlawInvoiceDialog({
           <div className="hlaw-slip-header text-center">
             <div className="mx-auto mb-2 h-1 w-12 rounded-full bg-[#b7791f]" />
             <p className="mt-1 text-base font-extrabold tracking-tight">
-              လှော်အိုး ဝန်ဆောင်မှုဘောင်ချာ
+              လှော်အိုး ဘောင်ချာ
             </p>
             <div className="mt-2 flex items-center justify-center gap-2 text-[11px] text-[#66756b]">
               <span>{row.serviceDate}</span>
