@@ -568,9 +568,9 @@ function InvoiceDialog({ row, onClose }: { row: any; onClose: () => void }) {
   };
   return (
     <Dialog open={Boolean(row)} onOpenChange={open => !open && onClose()}>
-      <DialogContent className="max-w-[720px] overflow-hidden p-0">
+      <DialogContent className="max-h-[92vh] max-w-[720px] overflow-y-auto p-0">
         <div className="border-b border-[#e5ece7] bg-[#f7fbf8] px-5 py-4 no-print">
-          <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-sm font-bold text-[#1e3025]">
                 ဘောင်ချာ ကြိုကြည့်ရန်
@@ -579,7 +579,7 @@ function InvoiceDialog({ row, onClose }: { row: any; onClose: () => void }) {
                 Print မထုတ်ခင် size နှင့် ပုံစံကို စစ်ဆေးပါ
               </p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <label
                 htmlFor="slip-size"
                 className="text-xs font-semibold text-[#53645b]"
@@ -699,7 +699,7 @@ function InvoiceDialog({ row, onClose }: { row: any; onClose: () => void }) {
         </div>
         <div className="space-y-3 border-t border-[#edf1ee] bg-white px-5 py-4 no-print">
           <PrinterAppGuide />
-          <div className="flex items-center justify-between gap-2">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="text-xs text-[#78867e]">
               ရွေးထားသည်:{" "}
               <strong className="text-[#25322b]">
@@ -711,7 +711,7 @@ function InvoiceDialog({ row, onClose }: { row: any; onClose: () => void }) {
                 </span>
               )}
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap justify-end gap-2">
               <Button variant="outline" onClick={onClose}>
                 ပိတ်မည်
               </Button>

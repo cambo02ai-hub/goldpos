@@ -561,15 +561,15 @@ function HlawInvoiceDialog({
     "ontouchend" in document;
   return (
     <Dialog open={Boolean(row)} onOpenChange={open => !open && onClose()}>
-      <DialogContent className="max-w-[720px] overflow-hidden p-0">
-        <div className="flex items-center justify-between border-b border-[#e5ece7] bg-[#f7fbf8] px-5 py-4 no-print">
+      <DialogContent className="max-h-[92vh] max-w-[720px] overflow-y-auto p-0">
+        <div className="flex flex-col gap-3 border-b border-[#e5ece7] bg-[#f7fbf8] px-5 py-4 no-print sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="font-bold text-[#1e3025]">လှော်အိုး ဘောင်ချာ</p>
             <p className="text-xs text-[#78867e]">
               Slip ကို ကြိုကြည့်ပြီး print ထုတ်ပါ
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <select
               value={slipSize}
               onChange={e => setSlipSize(e.target.value as SlipSize)}
@@ -644,31 +644,33 @@ function HlawInvoiceDialog({
         </div>
         <div className="space-y-3 border-t border-[#edf1ee] bg-white px-5 py-4 no-print">
           <PrinterAppGuide />
-          <div className="flex justify-end gap-2">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
             {isAppleTablet && (
               <p className="mr-auto self-center text-xs text-[#2c6e49]">
                 iPad မှ Print dialog ဖွင့်ပြီး POS printer ကို ရွေးပါ
               </p>
             )}
-            <Button variant="outline" onClick={onClose}>
-              ပိတ်မည်
-            </Button>
-            <Button
-              onClick={print}
-              className="bg-[#276044] text-white hover:bg-[#1f5038]"
-            >
-              <Printer className="mr-2 h-4 w-4" />
-              PDF / Print
-            </Button>
-            <Button
-              variant="outline"
-              disabled={exportingImage}
-              onClick={exportImage}
-              className="border-[#bcd5c3] text-[#276044]"
-            >
-              <FileText className="mr-2 h-4 w-4" />
-              {exportingImage ? "ပြင်ဆင်နေသည်…" : "Image / Share"}
-            </Button>
+            <div className="flex flex-wrap justify-end gap-2">
+              <Button variant="outline" onClick={onClose}>
+                ပိတ်မည်
+              </Button>
+              <Button
+                onClick={print}
+                className="bg-[#276044] text-white hover:bg-[#1f5038]"
+              >
+                <Printer className="mr-2 h-4 w-4" />
+                PDF / Print
+              </Button>
+              <Button
+                variant="outline"
+                disabled={exportingImage}
+                onClick={exportImage}
+                className="border-[#bcd5c3] text-[#276044]"
+              >
+                <FileText className="mr-2 h-4 w-4" />
+                {exportingImage ? "ပြင်ဆင်နေသည်…" : "Image / Share"}
+              </Button>
+            </div>
           </div>
         </div>
       </DialogContent>
