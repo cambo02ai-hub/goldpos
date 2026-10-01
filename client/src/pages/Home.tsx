@@ -13,7 +13,11 @@ import { Input } from "@/components/ui/input";
 import { PrinterAppGuide } from "@/components/PrinterAppGuide";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { trpc } from "@/lib/trpc";
-import { exportSlipImage, printSlipAsPdf } from "@/lib/slip-export";
+import {
+  exportSlipImage,
+  exportSlipPdf,
+  printSlipAsPdf,
+} from "@/lib/slip-export";
 import { goldWeightParts } from "@shared/shop-calculations";
 import {
   ArrowDownLeft,
@@ -497,6 +501,7 @@ function MobileTransaction({
 function InvoiceDialog({ row, onClose }: { row: any; onClose: () => void }) {
   const slipRef = useRef<HTMLDivElement>(null);
   const [exportingImage, setExportingImage] = useState(false);
+  const [exportingPdf, setExportingPdf] = useState(false);
   const [slipSize, setSlipSize] = useState<SlipSize>(() =>
     typeof window !== "undefined"
       ? (window.localStorage.getItem("gold-slip-size") as SlipSize) || "58"
@@ -568,6 +573,32 @@ function InvoiceDialog({ row, onClose }: { row: any; onClose: () => void }) {
       }
     } finally {
       setExportingImage(false);
+    }
+  };
+  const exportPdf = async () => {
+    if (!slipRef.current) return;
+    setExportingPdf(true);
+    try {
+      const widthMm = slipSize === "80" ? 80 : 58;
+      const heightMm =
+        slipSize === "custom"
+          ? Math.min(500, Math.max(50, Number(customLength) || 180))
+          : slipSize === "58"
+            ? 140
+            : 160;
+      await exportSlipPdf(
+        slipRef.current,
+        `goldpos-slip-${row.id}.pdf`,
+        `${typeLabel} #${row.id}`,
+        widthMm,
+        heightMm
+      );
+    } catch (error) {
+      if ((error as DOMException)?.name !== "AbortError") {
+        window.alert("Slip PDF ထုတ်၍ မရပါ။ ထပ်မံစမ်းကြည့်ပါ။");
+      }
+    } finally {
+      setExportingPdf(false);
     }
   };
   return (
@@ -730,11 +761,16 @@ function InvoiceDialog({ row, onClose }: { row: any; onClose: () => void }) {
                 ပိတ်မည်
               </Button>
               <Button
-                onClick={printSlip}
+                onClick={exportPdf}
+                disabled={exportingPdf}
                 className="bg-[#276044] text-white hover:bg-[#1f5038]"
               >
+                <FileDown className="mr-2 h-4 w-4" />
+                {exportingPdf ? "PDF ပြင်ဆင်နေသည်…" : "Exact PDF / Share"}
+              </Button>
+              <Button variant="outline" onClick={printSlip}>
                 <Printer className="mr-2 h-4 w-4" />
-                PDF / Print
+                Browser Print
               </Button>
               <Button
                 variant="outline"

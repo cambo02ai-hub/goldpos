@@ -6,7 +6,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PrinterAppGuide } from "@/components/PrinterAppGuide";
 import { trpc } from "@/lib/trpc";
-import { exportSlipImage, printSlipAsPdf } from "@/lib/slip-export";
+import {
+  exportSlipImage,
+  exportSlipPdf,
+  printSlipAsPdf,
+} from "@/lib/slip-export";
 import { format } from "date-fns";
 import { FileText, Printer, Search, Trash2, X } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
@@ -517,6 +521,7 @@ function HlawInvoiceDialog({
 }) {
   const slipRef = useRef<HTMLDivElement>(null);
   const [exportingImage, setExportingImage] = useState(false);
+  const [exportingPdf, setExportingPdf] = useState(false);
   const [slipSize, setSlipSize] = useState<SlipSize>(() =>
     typeof window !== "undefined"
       ? (window.localStorage.getItem("gold-hlaw-slip-size") as SlipSize) || "58"
@@ -569,6 +574,30 @@ function HlawInvoiceDialog({
       }
     } finally {
       setExportingImage(false);
+    }
+  };
+  const exportPdf = async () => {
+    if (!slipRef.current) return;
+    setExportingPdf(true);
+    try {
+      const widthMm = slipSize === "80" ? 80 : 58;
+      const heightMm =
+        slipSize === "custom"
+          ? Math.min(500, Math.max(50, Number(customLength) || 180))
+          : 180;
+      await exportSlipPdf(
+        slipRef.current,
+        `goldpos-hlaw-slip-${row.id}.pdf`,
+        `လှော်အိုး ဘောင်ချာ #${row.id}`,
+        widthMm,
+        heightMm
+      );
+    } catch (error) {
+      if ((error as DOMException)?.name !== "AbortError") {
+        window.alert("Slip PDF ထုတ်၍ မရပါ။ ထပ်မံစမ်းကြည့်ပါ။");
+      }
+    } finally {
+      setExportingPdf(false);
     }
   };
   const isAppleTablet =
@@ -669,11 +698,16 @@ function HlawInvoiceDialog({
                 ပိတ်မည်
               </Button>
               <Button
-                onClick={print}
+                onClick={exportPdf}
+                disabled={exportingPdf}
                 className="bg-[#276044] text-white hover:bg-[#1f5038]"
               >
+                <FileText className="mr-2 h-4 w-4" />
+                {exportingPdf ? "PDF ပြင်ဆင်နေသည်…" : "Exact PDF / Share"}
+              </Button>
+              <Button variant="outline" onClick={print}>
                 <Printer className="mr-2 h-4 w-4" />
-                PDF / Print
+                Browser Print
               </Button>
               <Button
                 variant="outline"

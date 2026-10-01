@@ -1,6 +1,29 @@
 import html2canvas from "html2canvas";
+import { jsPDF } from "jspdf";
 
 let printInProgress = false;
+
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.click();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+async function renderSlipCanvas(element: HTMLElement) {
+  await document.fonts?.ready;
+  return html2canvas(element, {
+    backgroundColor: "#ffffff",
+    scale: Math.min(3, Math.max(2, window.devicePixelRatio || 2)),
+    useCORS: true,
+    logging: false,
+    imageTimeout: 0,
+    scrollX: 0,
+    scrollY: -window.scrollY,
+  });
+}
 
 export function printSlipAsPdf(element: HTMLElement, title: string) {
   if (printInProgress) return;
@@ -29,12 +52,7 @@ export async function exportSlipImage(
   filename: string,
   shareTitle: string
 ) {
-  const canvas = await html2canvas(element, {
-    backgroundColor: "#ffffff",
-    scale: Math.min(3, Math.max(2, window.devicePixelRatio || 2)),
-    useCORS: true,
-    logging: false,
-  });
+  const canvas = await renderSlipCanvas(element);
   const blob = await new Promise<Blob | null>(resolve =>
     canvas.toBlob(resolve, "image/png")
   );
@@ -50,11 +68,36 @@ export async function exportSlipImage(
     return "shared" as const;
   }
 
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = filename;
-  anchor.click();
-  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  downloadBlob(blob, filename);
+  return "downloaded" as const;
+}
+
+export async function exportSlipPdf(
+  element: HTMLElement,
+  filename: string,
+  shareTitle: string,
+  widthMm: number,
+  heightMm: number
+) {
+  const canvas = await renderSlipCanvas(element);
+  const pdf = new jsPDF({
+    orientation: "portrait",
+    unit: "mm",
+    format: [widthMm, heightMm],
+    compress: true,
+  });
+  pdf.addImage(canvas.toDataURL("image/png"), "PNG", 0, 0, widthMm, heightMm);
+  const blob = pdf.output("blob");
+  const file = new File([blob], filename, { type: "application/pdf" });
+  const canShare =
+    typeof navigator.share === "function" &&
+    typeof navigator.canShare === "function" &&
+    navigator.canShare({ files: [file] });
+  if (canShare) {
+    await navigator.share({ title: shareTitle, files: [file] });
+    return "shared" as const;
+  }
+
+  downloadBlob(blob, filename);
   return "downloaded" as const;
 }
