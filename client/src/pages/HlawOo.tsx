@@ -10,6 +10,7 @@ import { exportSlipImage, printSlipAsPdf } from "@/lib/slip-export";
 import { format } from "date-fns";
 import { FileText, Printer, Search, Trash2, X } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
+import type { CSSProperties } from "react";
 import { toast } from "sonner";
 
 type SlipSize = "58" | "80" | "custom";
@@ -533,10 +534,23 @@ function HlawInvoiceDialog({
     window.localStorage.setItem("gold-hlaw-slip-length", String(length));
     const style = document.createElement("style");
     const width = slipSize === "80" ? 80 : 58;
-    style.textContent = `@media print { @page { size: ${width}mm ${slipSize === "custom" ? length : 180}mm; margin: 0; } }`;
+    const printHeight = slipSize === "custom" ? length : 180;
+    document.documentElement.style.setProperty("--slip-width", `${width}mm`);
+    document.documentElement.style.setProperty(
+      "--slip-height",
+      `${printHeight}mm`
+    );
+    style.textContent = `@media print { @page { size: ${width}mm ${printHeight}mm; margin: 0; } }`;
     document.head.appendChild(style);
     printSlipAsPdf(`goldpos-hlaw-slip-${row.id}`);
-    window.setTimeout(() => style.remove(), 1000);
+    const cleanup = () => {
+      style.remove();
+      document.documentElement.style.removeProperty("--slip-width");
+      document.documentElement.style.removeProperty("--slip-height");
+      window.removeEventListener("afterprint", cleanup);
+    };
+    window.addEventListener("afterprint", cleanup, { once: true });
+    window.setTimeout(cleanup, 10000);
   };
   const exportImage = async () => {
     if (!slipRef.current) return;
@@ -602,13 +616,11 @@ function HlawInvoiceDialog({
         </div>
         <div
           ref={slipRef}
-          className={`mx-auto my-5 bg-white p-5 text-sm text-[#17201d] ${slipSize === "58" ? "w-[58mm]" : "w-[80mm]"}`}
+          className={`invoice-print-area mx-auto my-5 bg-white p-5 text-sm text-[#17201d] ${slipSize === "58" ? "w-[58mm]" : "w-[80mm]"}`}
           style={
-            slipSize === "custom"
-              ? {
-                  minHeight: `${Math.min(500, Math.max(50, Number(customLength) || 180))}mm`,
-                }
-              : undefined
+            {
+              "--slip-height": `${Math.min(500, Math.max(50, Number(customLength) || 180))}mm`,
+            } as CSSProperties
           }
         >
           <div className="text-center">

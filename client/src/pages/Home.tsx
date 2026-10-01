@@ -523,11 +523,13 @@ function InvoiceDialog({ row, onClose }: { row: any; onClose: () => void }) {
         : slipSize === "58"
           ? "140mm"
           : "160mm";
+    document.documentElement.style.setProperty("--slip-height", printHeight);
     printStyle.textContent = `@media print { @page { size: ${width}mm ${printHeight}; margin: 0; } }`;
     document.head.appendChild(printStyle);
     return () => {
       printStyle.remove();
       document.documentElement.style.removeProperty("--slip-width");
+      document.documentElement.style.removeProperty("--slip-height");
     };
   }, [row, slipSize, customLength]);
   if (!row) return null;
@@ -647,6 +649,16 @@ function InvoiceDialog({ row, onClose }: { row: any; onClose: () => void }) {
               ref={slipRef}
               className="invoice-print-area"
               data-slip-size={slipSize}
+              style={
+                {
+                  "--slip-height":
+                    slipSize === "custom"
+                      ? `${Math.min(500, Math.max(50, Number(customLength) || 180))}mm`
+                      : slipSize === "58"
+                        ? "140mm"
+                        : "160mm",
+                } as React.CSSProperties
+              }
             >
               <DialogHeader className="border-b border-[#e5ece7] bg-[#f7fbf8] px-4 py-4">
                 <div className="flex items-start justify-between gap-3">
