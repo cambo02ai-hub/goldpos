@@ -1,5 +1,6 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { useTheme } from "@/contexts/ThemeContext";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,7 +29,9 @@ import {
   Flame,
   LayoutDashboard,
   LogOut,
+  Moon,
   PanelLeft,
+  Sun,
   Users,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
@@ -80,6 +83,7 @@ export default function DashboardLayout({
 }
 
 function LocalLoginForm() {
+  const { theme, toggleTheme } = useTheme();
   const utils = trpc.useUtils();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -94,19 +98,30 @@ function LocalLoginForm() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#f7f9f8] px-4">
+    <div className="relative flex min-h-screen items-center justify-center bg-background px-4">
+      <Button
+        type="button"
+        variant="outline"
+        size="icon"
+        className="absolute right-4 top-4"
+        onClick={toggleTheme}
+        aria-label={
+          theme === "dark" ? "Switch to light mode" : "Switch to dark mode"
+        }
+        title={theme === "dark" ? "Light mode" : "Dark mode"}
+      >
+        {theme === "dark" ? <Sun /> : <Moon />}
+      </Button>
       <form
         onSubmit={submit}
-        className="w-full max-w-sm space-y-6 rounded-2xl border border-[#dfe8e2] bg-white p-7 shadow-sm"
+        className="w-full max-w-sm space-y-6 rounded-2xl border bg-card p-7 text-card-foreground shadow-sm"
       >
         <div className="space-y-2 text-center">
-          <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#a06c18]">
+          <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">
             Ratanar Maung Gold House
           </p>
-          <h1 className="text-2xl font-bold tracking-tight text-[#17201d]">
-            ဝင်ရောက်ရန်
-          </h1>
-          <p className="text-sm text-[#68756d]">
+          <h1 className="text-2xl font-bold tracking-tight">ဝင်ရောက်ရန်</h1>
+          <p className="text-sm text-muted-foreground">
             GoldPOS စနစ်ကို အသုံးပြုရန် သင့်အကောင့်ဖြင့် ဝင်ရောက်ပါ။
           </p>
         </div>
@@ -145,7 +160,7 @@ function LocalLoginForm() {
         <Button
           type="submit"
           disabled={loginMutation.isPending}
-          className="w-full bg-[#276044] text-white hover:bg-[#1f5038]"
+          className="w-full"
         >
           {loginMutation.isPending ? "ဝင်ရောက်နေပါသည်…" : "ဝင်ရောက်မည်"}
         </Button>
@@ -164,6 +179,7 @@ function DashboardLayoutContent({
   setSidebarWidth,
 }: DashboardLayoutContentProps) {
   const { user, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const [location, setLocation] = useLocation();
   const { state, toggleSidebar } = useSidebar();
   const menuItems = [
@@ -242,6 +258,21 @@ function DashboardLayoutContent({
                   </span>
                 </div>
               ) : null}
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                className="ml-auto shrink-0 group-data-[collapsible=icon]:ml-0"
+                onClick={toggleTheme}
+                aria-label={
+                  theme === "dark"
+                    ? "Switch to light mode"
+                    : "Switch to dark mode"
+                }
+                title={theme === "dark" ? "Light mode" : "Dark mode"}
+              >
+                {theme === "dark" ? <Sun /> : <Moon />}
+              </Button>
             </div>
           </SidebarHeader>
 
@@ -320,6 +351,20 @@ function DashboardLayoutContent({
                     {activeMenuItem?.label ?? "Menu"}
                   </span>
                 </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={toggleTheme}
+                  aria-label={
+                    theme === "dark"
+                      ? "Switch to light mode"
+                      : "Switch to dark mode"
+                  }
+                  title={theme === "dark" ? "Light mode" : "Dark mode"}
+                >
+                  {theme === "dark" ? <Sun /> : <Moon />}
+                </Button>
               </div>
             </div>
           </div>
