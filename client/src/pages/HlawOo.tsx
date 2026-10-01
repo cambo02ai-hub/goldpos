@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PrinterAppGuide } from "@/components/PrinterAppGuide";
 import { trpc } from "@/lib/trpc";
+import { calculateHlawKyoot } from "@shared/shop-calculations";
 import {
   exportSlipImage,
   exportSlipPdf,
@@ -77,7 +78,18 @@ export default function HlawOo() {
       b[0].localeCompare(a[0])
     );
   }, [reportRows]);
-  const no2Preview = calculateNo2(form);
+  const kyootPreview = calculateHlawKyoot(
+    {
+      kyat: number(form.hlawKyat),
+      pae: number(form.hlawPae),
+      yway: number(form.hlawYway),
+    },
+    {
+      kyat: number(form.tinKyat),
+      pae: number(form.tinPae),
+      htwe: number(form.tinHtwe),
+    }
+  );
   const createMutation = trpc.shopBook.createHlawOo.useMutation({
     onSuccess: () => {
       toast.success("လှော်အိုးစာရင်း သိမ်းပြီးပါပြီ");
@@ -142,8 +154,8 @@ export default function HlawOo() {
           <CardHeader className="border-b border-[#edf1ee] bg-white px-4 py-4 sm:px-6">
             <CardTitle className="text-xl">လှော်အိုးစာရင်းအသစ်</CardTitle>
             <p className="text-sm text-[#78867e]">
-              No.2 ကို Hlaw × 3 ဖြင့် အလိုအလျောက်တွက်ပြီး Kyoot ကို Tin
-              အပေါ်အခြေခံ၍ ပြပါမည်။
+              No.2 ကို အလိုအလျောက်မတွက်တော့ဘဲ Kyoot ကို Hlaw/Tin formula ဖြင့်
+              အလိုအလျောက်တွက်ချက်ပြပါမည်။
             </p>
           </CardHeader>
           <CardContent className="bg-white px-4 py-5 sm:px-6">
@@ -184,14 +196,6 @@ export default function HlawOo() {
                 step="0.1"
                 onChange={v => update("hlawYway", v)}
               />
-              <div className="rounded-lg border border-[#dcebe0] bg-[#f4faf5] p-3 text-sm text-[#286442]">
-                <p className="text-xs text-[#68756d]">
-                  No.2 အလိုအလျောက် (Hlaw × 3)
-                </p>
-                <b>
-                  {weightText(no2Preview.kyat, no2Preview.pae, no2Preview.yway)}
-                </b>
-              </div>
               <WeightField
                 label="Tin ကျပ်သား"
                 value={form.tinKyat}
@@ -210,6 +214,15 @@ export default function HlawOo() {
                 step="0.1"
                 onChange={v => update("tinHtwe", v)}
               />
+              <div className="rounded-lg border border-[#dcebe0] bg-[#f4faf5] p-3 text-sm text-[#286442]">
+                <p className="text-xs text-[#68756d]">
+                  Kyoot အလိုအလျောက် (Hlaw/Tin formula)
+                </p>
+                <b>{kyootPreview === null ? "—" : kyootPreview.toFixed(2)}</b>
+                <p className="mt-1 text-[11px] text-[#68756d]">
+                  Formula: (Tin ÷ Hlaw − 1) × 120
+                </p>
+              </div>
               <Field label="လှော်ခ (ကျပ်)">
                 <Input
                   type="number"
@@ -277,7 +290,6 @@ export default function HlawOo() {
                     <th className="px-4 py-3">နေ့စွဲ</th>
                     <th className="px-3 py-3">အမည်</th>
                     <th className="px-3 py-3">Hlaw</th>
-                    <th className="px-3 py-3">No.2</th>
                     <th className="px-3 py-3">Tin</th>
                     <th className="px-3 py-3 text-right">Kyoot</th>
                     <th className="px-3 py-3 text-right">လှော်ခ</th>
@@ -293,9 +305,6 @@ export default function HlawOo() {
                       </td>
                       <td className="px-3 py-3">
                         {weightText(row.hlawKyat, row.hlawPae, row.hlawYway)}
-                      </td>
-                      <td className="px-3 py-3">
-                        {weightText(row.no2Kyat, row.no2Pae, row.no2Yway)}
                       </td>
                       <td className="px-3 py-3">
                         {weightText(row.tinKyat, row.tinPae, row.tinHtwe)}
@@ -449,17 +458,6 @@ export default function HlawOo() {
 
 function number(value: string) {
   return Number(value || 0);
-}
-function calculateNo2(form: FormState) {
-  const total =
-    (number(form.hlawKyat) +
-      number(form.hlawPae) / 16 +
-      number(form.hlawYway) / 128) *
-    3;
-  const kyat = Math.floor(total);
-  const paeRaw = (total - kyat) * 16;
-  const pae = Math.floor(paeRaw);
-  return { kyat, pae, yway: Math.round((paeRaw - pae) * 8 * 10) / 10 };
 }
 function Field({
   label,
@@ -663,10 +661,6 @@ function HlawInvoiceDialog({
           <SlipLine
             label="Hlaw"
             value={weightText(row.hlawKyat, row.hlawPae, row.hlawYway)}
-          />
-          <SlipLine
-            label="No.2"
-            value={weightText(row.no2Kyat, row.no2Pae, row.no2Yway)}
           />
           <SlipLine
             label="Tin"

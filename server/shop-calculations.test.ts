@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   calculateHlawKyoot,
-  calculateNo2Weight,
   calculateStockBalance,
   estimateDailyGoldProfit,
   goldWeightParts,
@@ -20,14 +19,6 @@ describe("Excel-based shop calculations", () => {
     });
     expect(balance.rawClosingWeight).toBe(1.75);
     expect(balance.expectedClosing).toEqual({ kyat: 1, pae: 12, yway: 0 });
-  });
-
-  it("calculates No.2 output as three times incoming Hlaw weight", () => {
-    expect(calculateNo2Weight({ kyat: 4, pae: 4, yway: 3 })).toEqual({
-      kyat: 12,
-      pae: 13,
-      yway: 1,
-    });
   });
 
   it("matches the workbook's Hlaw/Tin Kyoot formula", () => {

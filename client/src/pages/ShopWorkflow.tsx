@@ -16,7 +16,6 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { trpc } from "@/lib/trpc";
 import {
-  calculateNo2Weight,
   calculateStockBalance,
   estimateDailyGoldProfit,
   goldWeightParts,
@@ -315,12 +314,6 @@ export default function ShopWorkflow() {
         closingRate: inputNumber(closingForm.closingGoldRate),
       })
     : 0;
-  const no2Preview = calculateNo2Weight({
-    kyat: inputNumber(hlawForm.hlawKyat),
-    pae: inputNumber(hlawForm.hlawPae),
-    yway: inputNumber(hlawForm.hlawYway),
-  });
-
   const submitDaily = (event: FormEvent) => {
     event.preventDefault();
     closeMutation.mutate({

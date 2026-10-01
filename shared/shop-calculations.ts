@@ -42,14 +42,6 @@ export function calculateStockBalance(input: {
   };
 }
 
-export function calculateNo2Weight(input: GoldWeightParts): GoldWeightParts {
-  const tripled = goldWeight(input) * 3;
-  const kyat = Math.floor(tripled);
-  const pae = Math.floor((tripled - kyat) * 16);
-  const yway = Math.round(((tripled - kyat) * 16 - pae) * 8 * 10) / 10;
-  return { kyat, pae, yway };
-}
-
 /** Mirrors the worksheet's 7.5-htwe conversion and ×120 yield formula. */
 export function calculateHlawKyoot(
   hlaw: GoldWeightParts,

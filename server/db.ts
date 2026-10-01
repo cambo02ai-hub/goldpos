@@ -21,7 +21,6 @@ import {
 import { ENV } from "./_core/env";
 import {
   calculateHlawKyoot,
-  calculateNo2Weight,
   calculateStockBalance,
   estimateDailyGoldProfit,
   goldWeight,
@@ -1009,11 +1008,6 @@ export async function listHlawOoEntries(filters?: DateFilters) {
     .where(conditions.length ? and(...conditions) : undefined)
     .orderBy(desc(hlawOoEntries.serviceDate), desc(hlawOoEntries.id));
   return rows.map(row => {
-    const no2 = calculateNo2Weight({
-      kyat: Number(row.hlawKyat),
-      pae: Number(row.hlawPae),
-      yway: Number(row.hlawYway),
-    });
     const kyoot = calculateHlawKyoot(
       {
         kyat: Number(row.hlawKyat),
@@ -1028,9 +1022,6 @@ export async function listHlawOoEntries(filters?: DateFilters) {
     );
     return {
       ...row,
-      no2Kyat: no2.kyat,
-      no2Pae: no2.pae,
-      no2Yway: no2.yway,
       kyoot,
     };
   });
