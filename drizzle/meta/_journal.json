@@ -29,6 +29,13 @@
       "when": 1790641753858,
       "tag": "0003_financial_accounting_shop_workflow",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1790832010000,
+      "tag": "0004_employee_permissions",
+      "breakpoints": true
     }
   ]
 }

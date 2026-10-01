@@ -47,7 +47,6 @@ export async function authenticateLocalUser(
   password: string
 ) {
   const user = await getUserByOpenId(username.trim());
-  if (!user || user.loginMethod !== "local" || user.role !== "admin")
-    return null;
+  if (!user || user.loginMethod !== "local") return null;
   return verifyPassword(password, user.passwordHash) ? user : null;
 }

@@ -166,12 +166,40 @@ function DashboardLayoutContent({
   const { user, logout } = useAuth();
   const [location, setLocation] = useLocation();
   const { state, toggleSidebar } = useSidebar();
+  let employeePermissions: string[] | null = null;
+  if (user?.permissions) {
+    try {
+      employeePermissions = JSON.parse(user.permissions);
+    } catch {
+      employeePermissions = [];
+    }
+  }
+  const canAccess = (permission: string) =>
+    user?.role === "admin" ||
+    !employeePermissions ||
+    employeePermissions.includes(permission);
   const menuItems = [
-    { icon: LayoutDashboard, label: "နေ့စဉ်စာရင်း", path: "/" },
-    { icon: FilePlus2, label: "စာရင်းအသစ် ထည့်ရန်", path: "/new" },
-    { icon: Flame, label: "လှော်အိုးစာရင်း", path: "/hlaw-oo" },
-    { icon: BookOpenCheck, label: "ငွေစာရင်း / အစီရင်ခံစာ", path: "/finance" },
-    { icon: CalendarCheck2, label: "ဆိုင်စာရင်းအုပ်", path: "/shop-book" },
+    ...(canAccess("dashboard")
+      ? [{ icon: LayoutDashboard, label: "နေ့စဉ်စာရင်း", path: "/" }]
+      : []),
+    ...(canAccess("ledger")
+      ? [{ icon: FilePlus2, label: "စာရင်းအသစ် ထည့်ရန်", path: "/new" }]
+      : []),
+    ...(canAccess("hlawOo")
+      ? [{ icon: Flame, label: "လှော်အိုးစာရင်း", path: "/hlaw-oo" }]
+      : []),
+    ...(canAccess("finance")
+      ? [
+          {
+            icon: BookOpenCheck,
+            label: "ငွေစာရင်း / အစီရင်ခံစာ",
+            path: "/finance",
+          },
+        ]
+      : []),
+    ...(canAccess("shopBook")
+      ? [{ icon: CalendarCheck2, label: "ဆိုင်စာရင်းအုပ်", path: "/shop-book" }]
+      : []),
     ...(user?.role === "admin"
       ? [{ icon: Users, label: "Admin Dashboard", path: "/admin" }]
       : []),

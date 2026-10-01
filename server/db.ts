@@ -591,10 +591,39 @@ export async function listUsers() {
       name: users.name,
       email: users.email,
       role: users.role,
+      permissions: users.permissions,
       lastSignedIn: users.lastSignedIn,
     })
     .from(users)
     .orderBy(desc(users.lastSignedIn));
+}
+
+export async function createLocalEmployee(input: {
+  username: string;
+  name: string;
+  passwordHash: string;
+  permissions: string;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database is not available");
+  const existing = await getUserByOpenId(input.username);
+  if (existing) throw new Error("ဤ username ကို အသုံးပြုပြီးသား ဖြစ်ပါသည်");
+  await db.insert(users).values({
+    openId: input.username,
+    name: input.name,
+    loginMethod: "local",
+    passwordHash: input.passwordHash,
+    permissions: input.permissions,
+    role: "user",
+    lastSignedIn: new Date(),
+  });
+  return { success: true };
+}
+
+export async function updateUserPermissions(id: number, permissions: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database is not available");
+  return db.update(users).set({ permissions }).where(eq(users.id, id));
 }
 
 export async function updateUserRole(id: number, role: "user" | "admin") {
