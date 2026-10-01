@@ -34,6 +34,7 @@ import {
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
+import { AgentChatWidget } from "./AgentChatWidget";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 
@@ -325,6 +326,7 @@ function DashboardLayoutContent({
         )}
         <main className="flex-1 p-2 sm:p-3 md:p-4">{children}</main>
       </SidebarInset>
+      <AgentChatWidget />
     </>
   );
 }
