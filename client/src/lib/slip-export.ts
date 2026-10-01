@@ -122,7 +122,7 @@ function canvasToEscPos(canvas: HTMLCanvasElement, widthDots: number) {
   output.set([0x1b, 0x40], 0);
   output.set(header, 2);
   output.set(raster, 2 + header.length);
-  output.set([0x0a, 0x0a, 0x1d, 0x56], 2 + header.length + raster.length);
+  output.set([0x0a, 0x0a, 0x1d, 0x56, 0x00], 2 + header.length + raster.length);
   return output;
 }
 
@@ -145,7 +145,12 @@ export async function printSlipToBluetooth(
   }
   const device = await bluetooth.requestDevice({
     acceptAllDevices: true,
-    optionalServices: ["000018f0-0000-1000-8000-00805f9b34fb"],
+    optionalServices: [
+      "000018f0-0000-1000-8000-00805f9b34fb",
+      "0000ffe0-0000-1000-8000-00805f9b34fb",
+      "0000ffe5-0000-1000-8000-00805f9b34fb",
+      "0000fff0-0000-1000-8000-00805f9b34fb",
+    ],
   });
   if (!device.gatt) throw new Error("ဒီ printer တွင် GATT မရပါ");
   const server: BluetoothGattServer = device.gatt.connected
