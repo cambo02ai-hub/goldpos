@@ -549,7 +549,9 @@ function InvoiceDialog({ row, onClose }: { row: any; onClose: () => void }) {
     /iPad|Macintosh/.test(navigator.userAgent) &&
     "ontouchend" in document;
   const printSlip = () => {
-    printSlipAsPdf(`goldpos-slip-${row.id}`);
+    if (slipRef.current) {
+      printSlipAsPdf(slipRef.current, `goldpos-slip-${row.id}`);
+    }
   };
   const exportImage = async () => {
     if (!slipRef.current) return;

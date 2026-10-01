@@ -1,13 +1,26 @@
 import html2canvas from "html2canvas";
 
-export function printSlipAsPdf(title: string) {
+let printInProgress = false;
+
+export function printSlipAsPdf(element: HTMLElement, title: string) {
+  if (printInProgress) return;
+  printInProgress = true;
+  document.querySelectorAll(".invoice-print-target").forEach(target => {
+    target.classList.remove("invoice-print-target");
+  });
+  element.classList.add("invoice-print-target");
   const previousTitle = document.title;
   document.title = title;
+  const cleanup = () => {
+    printInProgress = false;
+    element.classList.remove("invoice-print-target");
+    document.title = previousTitle;
+    window.removeEventListener("afterprint", cleanup);
+  };
+  window.addEventListener("afterprint", cleanup, { once: true });
   window.setTimeout(() => {
     window.print();
-    window.setTimeout(() => {
-      document.title = previousTitle;
-    }, 1000);
+    window.setTimeout(cleanup, 10000);
   }, 40);
 }
 

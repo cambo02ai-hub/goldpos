@@ -542,7 +542,9 @@ function HlawInvoiceDialog({
     );
     style.textContent = `@media print { @page { size: ${width}mm ${printHeight}mm; margin: 0; } }`;
     document.head.appendChild(style);
-    printSlipAsPdf(`goldpos-hlaw-slip-${row.id}`);
+    if (slipRef.current) {
+      printSlipAsPdf(slipRef.current, `goldpos-hlaw-slip-${row.id}`);
+    }
     const cleanup = () => {
       style.remove();
       document.documentElement.style.removeProperty("--slip-width");

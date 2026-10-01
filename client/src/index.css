@@ -154,14 +154,14 @@
     padding: 0 !important;
     background: #fff !important;
   }
-  body:has(.invoice-print-area) * {
+  body:has(.invoice-print-target) * {
     visibility: hidden !important;
   }
-  body:has(.invoice-print-area) .invoice-print-area,
-  body:has(.invoice-print-area) .invoice-print-area * {
+  body:has(.invoice-print-target) .invoice-print-target,
+  body:has(.invoice-print-target) .invoice-print-target * {
     visibility: visible !important;
   }
-  body:has(.invoice-print-area) .invoice-print-area {
+  body:has(.invoice-print-target) .invoice-print-target {
     position: static !important;
     width: var(--slip-width) !important;
     max-width: var(--slip-width) !important;
@@ -175,32 +175,32 @@
     color: #111 !important;
     font-size: 10pt !important;
   }
-  body:has(.invoice-print-area) .invoice-preview-paper,
-  body:has(.invoice-print-area) .invoice-print-area {
+  body:has(.invoice-print-target) .invoice-preview-paper,
+  body:has(.invoice-print-target) .invoice-print-target {
     max-height: none !important;
   }
-  body:has(.invoice-print-area) .invoice-print-area {
+  body:has(.invoice-print-target) .invoice-print-target {
     min-height: var(--slip-height) !important;
     height: var(--slip-height) !important;
     box-sizing: border-box !important;
   }
-  body:has(.invoice-print-area) .invoice-preview-paper {
+  body:has(.invoice-print-target) .invoice-preview-paper {
     width: var(--slip-width) !important;
     max-width: none !important;
     margin: 0 !important;
     box-shadow: none !important;
   }
-  body:has(.invoice-print-area) .invoice-preview-paper > div {
+  body:has(.invoice-print-target) .invoice-preview-paper > div {
     overflow: visible !important;
     max-height: none !important;
   }
-  body:has(.invoice-print-area) div:has(> .invoice-preview-paper) {
+  body:has(.invoice-print-target) div:has(> .invoice-preview-paper) {
     max-height: none !important;
     overflow: visible !important;
     padding: 0 !important;
     background: #fff !important;
   }
-  body:has(.invoice-print-area) [data-radix-dialog-content] {
+  body:has(.invoice-print-target) [data-radix-dialog-content] {
     position: static !important;
     transform: none !important;
     width: var(--slip-width) !important;
@@ -208,11 +208,11 @@
     margin: 0 !important;
     padding: 0 !important;
   }
-  body:has(.invoice-print-area) .invoice-print-area > div {
+  body:has(.invoice-print-target) .invoice-print-target > div {
     padding-left: 4mm !important;
     padding-right: 4mm !important;
   }
-  body:has(.invoice-print-area) .invoice-print-area .no-print {
+  body:has(.invoice-print-target) .invoice-print-target .no-print {
     display: none !important;
   }
 }
