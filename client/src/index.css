@@ -173,7 +173,6 @@
     box-shadow: none !important;
     background: #fff !important;
     color: #111 !important;
-    font-size: 10pt !important;
   }
   body:has(.invoice-print-target) .invoice-preview-paper,
   body:has(.invoice-print-target) .invoice-print-target {
@@ -207,10 +206,6 @@
     max-width: none !important;
     margin: 0 !important;
     padding: 0 !important;
-  }
-  body:has(.invoice-print-target) .invoice-print-target > div {
-    padding-left: 4mm !important;
-    padding-right: 4mm !important;
   }
   body:has(.invoice-print-target) .invoice-print-target .no-print {
     display: none !important;
