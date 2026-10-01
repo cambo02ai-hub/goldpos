@@ -538,6 +538,13 @@ function InvoiceDialog({ row, onClose }: { row: any; onClose: () => void }) {
         Number(row.rate || 0)
     );
   const paperWidth = slipSize === "58" ? "w-[58mm]" : "w-[80mm]";
+  const isAppleTablet =
+    typeof navigator !== "undefined" &&
+    /iPad|Macintosh/.test(navigator.userAgent) &&
+    "ontouchend" in document;
+  const printSlip = () => {
+    window.setTimeout(() => window.print(), 40);
+  };
   return (
     <Dialog open={Boolean(row)} onOpenChange={open => !open && onClose()}>
       <DialogContent className="max-w-[720px] overflow-hidden p-0">
@@ -671,13 +678,18 @@ function InvoiceDialog({ row, onClose }: { row: any; onClose: () => void }) {
             <strong className="text-[#25322b]">
               {slipSize === "custom" ? `${customLength}mm` : `${slipSize}mm`}
             </strong>
+            {isAppleTablet && (
+              <span className="mt-1 block text-[#2c6e49]">
+                iPad မှ Print dialog ဖွင့်ပြီး POS printer ကို ရွေးပါ
+              </span>
+            )}
           </div>
           <div className="flex gap-2">
             <Button variant="outline" onClick={onClose}>
               ပိတ်မည်
             </Button>
             <Button
-              onClick={() => window.print()}
+              onClick={printSlip}
               className="bg-[#276044] text-white hover:bg-[#1f5038]"
             >
               <Printer className="mr-2 h-4 w-4" />

@@ -531,9 +531,13 @@ function HlawInvoiceDialog({
     const width = slipSize === "80" ? 80 : 58;
     style.textContent = `@media print { @page { size: ${width}mm ${slipSize === "custom" ? length : 180}mm; margin: 0; } }`;
     document.head.appendChild(style);
-    window.print();
+    window.setTimeout(() => window.print(), 40);
     window.setTimeout(() => style.remove(), 1000);
   };
+  const isAppleTablet =
+    typeof navigator !== "undefined" &&
+    /iPad|Macintosh/.test(navigator.userAgent) &&
+    "ontouchend" in document;
   return (
     <Dialog open={Boolean(row)} onOpenChange={open => !open && onClose()}>
       <DialogContent className="max-w-[720px] overflow-hidden p-0">
@@ -617,6 +621,11 @@ function HlawInvoiceDialog({
           <p className="mt-5 text-center text-xs">ကျေးဇူးတင်ပါသည်။</p>
         </div>
         <div className="flex justify-end gap-2 border-t border-[#edf1ee] bg-white px-5 py-4 no-print">
+          {isAppleTablet && (
+            <p className="mr-auto self-center text-xs text-[#2c6e49]">
+              iPad မှ Print dialog ဖွင့်ပြီး POS printer ကို ရွေးပါ
+            </p>
+          )}
           <Button variant="outline" onClick={onClose}>
             ပိတ်မည်
           </Button>
