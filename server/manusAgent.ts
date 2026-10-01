@@ -68,7 +68,7 @@ export async function startAgentTask(userId: number, message: string) {
   const result = await manusRequest("/task.create", {
     method: "POST",
     body: JSON.stringify({
-      message: taskPrompt(message),
+      message: { content: taskPrompt(message) },
       title: "Goldpos App Agent",
       interactive_mode: true,
       hide_in_task_list: true,
@@ -89,7 +89,7 @@ export async function sendAgentMessage(userId: number, message: string) {
     method: "POST",
     body: JSON.stringify({
       task_id: taskId,
-      message: { role: "user", content: message },
+      message: { content: message },
     }),
   });
   return { taskId };
