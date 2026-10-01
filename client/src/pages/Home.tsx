@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { trpc } from "@/lib/trpc";
+import { exportSlipImage, printSlipAsPdf } from "@/lib/slip-export";
 import { goldWeightParts } from "@shared/shop-calculations";
 import {
   ArrowDownLeft,
@@ -25,7 +26,7 @@ import {
   Search,
   Trash2,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type FilterType = "all" | "sell" | "buy";
 type ViewMode = "today" | "all";
@@ -493,6 +494,8 @@ function MobileTransaction({
 }
 
 function InvoiceDialog({ row, onClose }: { row: any; onClose: () => void }) {
+  const slipRef = useRef<HTMLDivElement>(null);
+  const [exportingImage, setExportingImage] = useState(false);
   const [slipSize, setSlipSize] = useState<SlipSize>(() =>
     typeof window !== "undefined"
       ? (window.localStorage.getItem("gold-slip-size") as SlipSize) || "58"
@@ -543,7 +546,24 @@ function InvoiceDialog({ row, onClose }: { row: any; onClose: () => void }) {
     /iPad|Macintosh/.test(navigator.userAgent) &&
     "ontouchend" in document;
   const printSlip = () => {
-    window.setTimeout(() => window.print(), 40);
+    printSlipAsPdf(`goldpos-slip-${row.id}`);
+  };
+  const exportImage = async () => {
+    if (!slipRef.current) return;
+    setExportingImage(true);
+    try {
+      await exportSlipImage(
+        slipRef.current,
+        `goldpos-slip-${row.id}.png`,
+        `${typeLabel} #${row.id}`
+      );
+    } catch (error) {
+      if ((error as DOMException)?.name !== "AbortError") {
+        window.alert("Slip image ထုတ်၍ မရပါ။ ထပ်မံစမ်းကြည့်ပါ။");
+      }
+    } finally {
+      setExportingImage(false);
+    }
   };
   return (
     <Dialog open={Boolean(row)} onOpenChange={open => !open && onClose()}>
@@ -622,7 +642,11 @@ function InvoiceDialog({ row, onClose }: { row: any; onClose: () => void }) {
               } as React.CSSProperties
             }
           >
-            <div className="invoice-print-area" data-slip-size={slipSize}>
+            <div
+              ref={slipRef}
+              className="invoice-print-area"
+              data-slip-size={slipSize}
+            >
               <DialogHeader className="border-b border-[#e5ece7] bg-[#f7fbf8] px-4 py-4">
                 <div className="flex items-start justify-between gap-3">
                   <div>
@@ -693,7 +717,16 @@ function InvoiceDialog({ row, onClose }: { row: any; onClose: () => void }) {
               className="bg-[#276044] text-white hover:bg-[#1f5038]"
             >
               <Printer className="mr-2 h-4 w-4" />
-              Print ထုတ်မည်
+              PDF / Print
+            </Button>
+            <Button
+              variant="outline"
+              disabled={exportingImage}
+              onClick={exportImage}
+              className="border-[#bcd5c3] text-[#276044]"
+            >
+              <FileDown className="mr-2 h-4 w-4" />
+              {exportingImage ? "ပြင်ဆင်နေသည်…" : "Image / Share"}
             </Button>
           </div>
         </div>

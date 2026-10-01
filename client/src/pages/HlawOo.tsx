@@ -5,9 +5,10 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { trpc } from "@/lib/trpc";
+import { exportSlipImage, printSlipAsPdf } from "@/lib/slip-export";
 import { format } from "date-fns";
 import { FileText, Printer, Search, Trash2, X } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 type SlipSize = "58" | "80" | "custom";
@@ -512,6 +513,8 @@ function HlawInvoiceDialog({
   row: any;
   onClose: () => void;
 }) {
+  const slipRef = useRef<HTMLDivElement>(null);
+  const [exportingImage, setExportingImage] = useState(false);
   const [slipSize, setSlipSize] = useState<SlipSize>(() =>
     typeof window !== "undefined"
       ? (window.localStorage.getItem("gold-hlaw-slip-size") as SlipSize) || "58"
@@ -531,8 +534,25 @@ function HlawInvoiceDialog({
     const width = slipSize === "80" ? 80 : 58;
     style.textContent = `@media print { @page { size: ${width}mm ${slipSize === "custom" ? length : 180}mm; margin: 0; } }`;
     document.head.appendChild(style);
-    window.setTimeout(() => window.print(), 40);
+    printSlipAsPdf(`goldpos-hlaw-slip-${row.id}`);
     window.setTimeout(() => style.remove(), 1000);
+  };
+  const exportImage = async () => {
+    if (!slipRef.current) return;
+    setExportingImage(true);
+    try {
+      await exportSlipImage(
+        slipRef.current,
+        `goldpos-hlaw-slip-${row.id}.png`,
+        `လှော်အိုး ဘောင်ချာ #${row.id}`
+      );
+    } catch (error) {
+      if ((error as DOMException)?.name !== "AbortError") {
+        window.alert("Slip image ထုတ်၍ မရပါ။ ထပ်မံစမ်းကြည့်ပါ။");
+      }
+    } finally {
+      setExportingImage(false);
+    }
   };
   const isAppleTablet =
     typeof navigator !== "undefined" &&
@@ -580,6 +600,7 @@ function HlawInvoiceDialog({
           </div>
         </div>
         <div
+          ref={slipRef}
           className={`mx-auto my-5 bg-white p-5 text-sm text-[#17201d] ${slipSize === "58" ? "w-[58mm]" : "w-[80mm]"}`}
           style={
             slipSize === "custom"
@@ -634,7 +655,16 @@ function HlawInvoiceDialog({
             className="bg-[#276044] text-white hover:bg-[#1f5038]"
           >
             <Printer className="mr-2 h-4 w-4" />
-            Print ထုတ်မည်
+            PDF / Print
+          </Button>
+          <Button
+            variant="outline"
+            disabled={exportingImage}
+            onClick={exportImage}
+            className="border-[#bcd5c3] text-[#276044]"
+          >
+            <FileText className="mr-2 h-4 w-4" />
+            {exportingImage ? "ပြင်ဆင်နေသည်…" : "Image / Share"}
           </Button>
         </div>
       </DialogContent>
