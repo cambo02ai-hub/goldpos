@@ -629,7 +629,7 @@ function HlawInvoiceDialog({
             <div className="my-3 border-t border-dashed border-[#9aa79f]" />
             <SlipLine label="အမည်" value={row.customerName} />
             <SlipLine
-              label="Hlaw"
+              label="လှော်"
               value={weightText(row.hlawKyat, row.hlawPae, row.hlawYway)}
             />
             <SlipLine
@@ -637,11 +637,11 @@ function HlawInvoiceDialog({
               value={weightText(row.no2Kyat, row.no2Pae, row.no2Yway)}
             />
             <SlipLine
-              label="Tin"
+              label="တင်"
               value={weightText(row.tinKyat, row.tinPae, row.tinHtwe)}
             />
             <SlipLine
-              label="Kyoot"
+              label="ကျွတ်"
               value={row.kyoot === null ? "—" : Number(row.kyoot).toFixed(2)}
             />
             <div className="my-3 border-t border-dashed border-[#9aa79f]" />
